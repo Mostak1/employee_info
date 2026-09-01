@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import api from '../lib/api'
+import { API_ENDPOINTS } from '../config/api'
 
 const loading = ref(true)
 const error = ref('')
@@ -77,7 +78,7 @@ async function loadAttendance() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await api.get('/attendance', {
+    const { data } = await api.get(API_ENDPOINTS.attendance, {
       params: {
         start_date: dateRange.value.start,
         end_date: dateRange.value.end,
