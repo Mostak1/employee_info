@@ -201,11 +201,11 @@ onMounted(loadAttendance)
                     <p class="font-semibold text-slate-800">{{ formatDate(day.date) }}</p>
                     <span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ statusLabel(day.status) }}</span>
                   </div>
-                  <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div><p class="text-xs text-slate-500">Clock in</p><p class="mt-1 font-medium text-slate-700">{{ formatTime(day.clock_in) }}</p></div>
-                    <div><p class="text-xs text-slate-500">Clock out</p><p class="mt-1 font-medium text-slate-700">{{ formatTime(day.clock_out) }}</p></div>
-                    <div><p class="text-xs text-slate-500">Late</p><p class="mt-1 font-medium text-slate-700">{{ day.late_minutes ? `${day.late_minutes} min` : '—' }}</p></div>
-                    <div><p class="text-xs text-slate-500">Worked hours</p><p class="mt-1 font-medium text-slate-700">{{ day.worked_hours || '—' }}</p></div>
+                  <div class="mt-4 grid grid-cols-4 gap-2 text-xs">
+                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Clock in</p><p class="mt-1 truncate font-medium text-slate-700">{{ formatTime(day.clock_in) }}</p></div>
+                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Clock out</p><p class="mt-1 truncate font-medium text-slate-700">{{ formatTime(day.clock_out) }}</p></div>
+                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Late</p><p class="mt-1 truncate font-medium text-slate-700">{{ day.late_minutes ? `${day.late_minutes} min` : '—' }}</p></div>
+                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Worked hours</p><p class="mt-1 truncate font-medium text-slate-700">{{ day.worked_hours || '—' }}</p></div>
                   </div>
                 </CardContent>
               </Card>
