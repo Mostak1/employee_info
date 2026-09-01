@@ -157,12 +157,12 @@ onMounted(loadAttendance)
     </div>
 
     <template v-else>
-      <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <Card v-for="item in summaryCards" :key="item.label" class="overflow-hidden">
           <CardContent class="p-0">
-            <div :class="['h-full px-5 py-4 text-white', item.tone]">
-              <p class="text-sm font-medium text-white/80">{{ item.label }}</p>
-              <p class="mt-1 text-3xl font-bold">{{ item.value }}</p>
+            <div :class="['flex min-h-[76px] flex-col justify-center px-2 py-2 text-white sm:min-h-[96px] sm:px-5 sm:py-4', item.tone]">
+              <p class="text-[10px] font-medium leading-tight text-white/80 sm:text-sm">{{ item.label }}</p>
+              <p class="mt-0.5 text-xl font-bold leading-none sm:mt-1 sm:text-3xl">{{ item.value }}</p>
             </div>
           </CardContent>
         </Card>
