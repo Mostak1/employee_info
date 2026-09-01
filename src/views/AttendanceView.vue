@@ -12,6 +12,7 @@ const period = ref(null)
 const summary = ref({ total_days: 0, present_days: 0, late_days: 0, absent_days: 0 })
 const attendance = ref([])
 const dateRange = ref(getCurrentMonthRange())
+const filterOpen = ref(false)
 
 const periodLabel = computed(() => {
   if (!period.value) return 'Current month'
@@ -124,10 +125,22 @@ onMounted(loadAttendance)
         <h1 class="mt-1 text-3xl font-bold">Attendance</h1>
         <p class="mt-1 text-sm text-slate-500">{{ periodLabel }}</p>
       </div>
-      <Button v-if="error" variant="outline" @click="loadAttendance">Try again</Button>
+      <div class="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          :aria-expanded="filterOpen"
+          aria-controls="attendance-filter"
+          @click="filterOpen = !filterOpen"
+        >
+          Filter <span aria-hidden="true" class="text-xs">{{ filterOpen ? '▲' : '▼' }}</span>
+        </Button>
+        <Button v-if="error" variant="outline" size="sm" @click="loadAttendance">Try again</Button>
+      </div>
     </div>
 
-    <Card class="mt-6">
+    <Card v-if="filterOpen" id="attendance-filter" class="mt-6">
       <CardHeader class="pb-4"><CardTitle class="text-base">Filter by date</CardTitle></CardHeader>
       <CardContent class="pt-0">
         <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end" @submit.prevent="applyFilter">
