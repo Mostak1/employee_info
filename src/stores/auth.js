@@ -35,5 +35,14 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  return { token, user, loading, error, isAuthenticated, login, logout }
+  async function fetchCurrentUser() {
+    const { data } = await api.get('/me')
+    if (data.user) {
+      user.value = data.user
+      localStorage.setItem('carenet_user', JSON.stringify(user.value))
+    }
+    return user.value
+  }
+
+  return { token, user, loading, error, isAuthenticated, login, logout, fetchCurrentUser }
 })
