@@ -2,19 +2,22 @@
 import { computed, onMounted, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import api from '../lib/api'
 
 const loading = ref(true)
 const error = ref('')
+const validationError = ref('')
 const period = ref(null)
 const summary = ref({ total_days: 0, present_days: 0, late_days: 0, absent_days: 0 })
 const attendance = ref([])
+const dateRange = ref(getCurrentMonthRange())
 
 const periodLabel = computed(() => {
   if (!period.value) return 'Current month'
-  return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(
-    new Date(period.value.year, period.value.month - 1, 1),
-  )
+  const start = formatDate(period.value.start_date)
+  const end = formatDate(period.value.end_date)
+  return start === end ? start : `${start} – ${end}`
 })
 
 const summaryCards = computed(() => [
@@ -23,6 +26,17 @@ const summaryCards = computed(() => [
   { label: 'Late', value: summary.value.late_days, tone: 'bg-amber-500' },
   { label: 'Absent', value: summary.value.absent_days, tone: 'bg-red-600' },
 ])
+
+function getCurrentMonthRange() {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const lastDay = new Date(year, today.getMonth() + 1, 0).getDate()
+  return {
+    start: `${year}-${month}-01`,
+    end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`,
+  }
+}
 
 function formatDate(value) {
   if (!value) return '—'
@@ -53,12 +67,24 @@ function statusClass(status) {
   }[status] || 'bg-slate-100 text-slate-600'
 }
 
+function statusLabel(status) {
+  return (status || 'unknown').replaceAll('_', ' ')
+}
+
 async function loadAttendance() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await api.get('/attendance/current-month')
+    const { data } = await api.get('/attendance', {
+      params: {
+        start_date: dateRange.value.start,
+        end_date: dateRange.value.end,
+      },
+    })
     period.value = data.period || null
+    if (data.period?.start_date && data.period?.end_date) {
+      dateRange.value = { start: data.period.start_date, end: data.period.end_date }
+    }
     summary.value = { ...summary.value, ...(data.summary || {}) }
     attendance.value = data.attendance || []
   } catch (requestError) {
@@ -66,6 +92,25 @@ async function loadAttendance() {
   } finally {
     loading.value = false
   }
+}
+
+async function applyFilter() {
+  validationError.value = ''
+  if (!dateRange.value.start || !dateRange.value.end) {
+    validationError.value = 'Select both a start date and an end date.'
+    return
+  }
+  if (dateRange.value.start > dateRange.value.end) {
+    validationError.value = 'The start date must be before or equal to the end date.'
+    return
+  }
+  await loadAttendance()
+}
+
+async function resetFilter() {
+  dateRange.value = getCurrentMonthRange()
+  validationError.value = ''
+  await loadAttendance()
 }
 
 onMounted(loadAttendance)
@@ -81,6 +126,27 @@ onMounted(loadAttendance)
       </div>
       <Button v-if="error" variant="outline" @click="loadAttendance">Try again</Button>
     </div>
+
+    <Card class="mt-6">
+      <CardHeader class="pb-4"><CardTitle class="text-base">Filter by date</CardTitle></CardHeader>
+      <CardContent class="pt-0">
+        <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end" @submit.prevent="applyFilter">
+          <label class="grid gap-2 text-sm font-medium text-slate-700">
+            <span>Start date</span>
+            <Input v-model="dateRange.start" type="date" :aria-invalid="Boolean(validationError)" />
+          </label>
+          <label class="grid gap-2 text-sm font-medium text-slate-700">
+            <span>End date</span>
+            <Input v-model="dateRange.end" type="date" :aria-invalid="Boolean(validationError)" />
+          </label>
+          <div class="flex gap-2 sm:col-span-2 lg:col-span-1">
+            <Button type="submit" class="flex-1 lg:flex-none" :disabled="loading">Apply</Button>
+            <Button type="button" variant="outline" class="flex-1 lg:flex-none" :disabled="loading" @click="resetFilter">Reset</Button>
+          </div>
+        </form>
+        <p v-if="validationError" class="mt-3 text-sm text-red-600">{{ validationError }}</p>
+      </CardContent>
+    </Card>
 
     <Card v-if="error" class="mt-6 border-red-200 bg-red-50">
       <CardContent class="p-5 text-sm text-red-700">{{ error }}</CardContent>
@@ -106,9 +172,26 @@ onMounted(loadAttendance)
         <CardHeader><CardTitle>Daily records</CardTitle></CardHeader>
         <CardContent class="p-0">
           <div v-if="attendance.length === 0" class="px-6 py-8 text-center text-sm text-slate-500">
-            No attendance records found for this month.
+            No attendance records found for this date range.
           </div>
-          <div v-else class="overflow-x-auto">
+          <div v-else>
+            <div class="space-y-3 p-4 md:hidden">
+              <Card v-for="day in attendance" :key="day.date" class="shadow-none">
+                <CardContent class="p-4">
+                  <div class="flex items-center justify-between gap-3">
+                    <p class="font-semibold text-slate-800">{{ formatDate(day.date) }}</p>
+                    <span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ statusLabel(day.status) }}</span>
+                  </div>
+                  <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div><p class="text-xs text-slate-500">Clock in</p><p class="mt-1 font-medium text-slate-700">{{ formatTime(day.clock_in) }}</p></div>
+                    <div><p class="text-xs text-slate-500">Clock out</p><p class="mt-1 font-medium text-slate-700">{{ formatTime(day.clock_out) }}</p></div>
+                    <div><p class="text-xs text-slate-500">Late</p><p class="mt-1 font-medium text-slate-700">{{ day.late_minutes ? `${day.late_minutes} min` : '—' }}</p></div>
+                    <div><p class="text-xs text-slate-500">Worked hours</p><p class="mt-1 font-medium text-slate-700">{{ day.worked_hours || '—' }}</p></div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div class="hidden overflow-x-auto md:block">
             <table class="w-full min-w-[560px] text-left text-sm">
               <thead class="border-y border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr><th class="px-6 py-3 font-medium">Date</th><th class="px-6 py-3 font-medium">Status</th><th class="px-6 py-3 font-medium">Clock in</th><th class="px-6 py-3 font-medium">Clock out</th><th class="px-6 py-3 text-right font-medium">Hours</th></tr>
@@ -116,13 +199,14 @@ onMounted(loadAttendance)
               <tbody class="divide-y divide-slate-100">
                 <tr v-for="day in attendance" :key="day.date" class="hover:bg-slate-50">
                   <td class="px-6 py-4 font-medium text-slate-800">{{ formatDate(day.date) }}</td>
-                  <td class="px-6 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ day.status.replace('_', ' ') }}</span></td>
+                  <td class="px-6 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ statusLabel(day.status) }}</span></td>
                   <td class="px-6 py-4 text-slate-600">{{ formatTime(day.clock_in) }}</td>
                   <td class="px-6 py-4 text-slate-600">{{ formatTime(day.clock_out) }}</td>
                   <td class="px-6 py-4 text-right text-slate-600">{{ day.worked_hours || '—' }}</td>
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         </CardContent>
       </Card>
