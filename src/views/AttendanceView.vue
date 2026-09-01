@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import api from '../lib/api'
 
 const loading = ref(true)
@@ -88,8 +89,10 @@ async function loadAttendance() {
     }
     summary.value = { ...summary.value, ...(data.summary || {}) }
     attendance.value = data.attendance || []
+    return true
   } catch (requestError) {
     error.value = requestError.response?.data?.message || 'Unable to load your attendance.'
+    return false
   } finally {
     loading.value = false
   }
@@ -105,13 +108,13 @@ async function applyFilter() {
     validationError.value = 'The start date must be before or equal to the end date.'
     return
   }
-  await loadAttendance()
+  if (await loadAttendance()) filterOpen.value = false
 }
 
 async function resetFilter() {
   dateRange.value = getCurrentMonthRange()
   validationError.value = ''
-  await loadAttendance()
+  if (await loadAttendance()) filterOpen.value = false
 }
 
 onMounted(loadAttendance)
@@ -140,10 +143,13 @@ onMounted(loadAttendance)
       </div>
     </div>
 
-    <Card v-if="filterOpen" id="attendance-filter" class="mt-6">
-      <CardHeader class="pb-4"><CardTitle class="text-base">Filter by date</CardTitle></CardHeader>
-      <CardContent class="pt-0">
-        <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end" @submit.prevent="applyFilter">
+    <Sheet v-model:open="filterOpen">
+      <SheetContent id="attendance-filter" side="bottom" class="mx-auto max-h-[90vh] max-w-2xl rounded-t-3xl">
+        <SheetHeader>
+          <SheetTitle>Filter attendance</SheetTitle>
+          <SheetDescription>Select an inclusive start and end date.</SheetDescription>
+        </SheetHeader>
+        <form class="grid gap-4" @submit.prevent="applyFilter">
           <label class="grid gap-2 text-sm font-medium text-slate-700">
             <span>Start date</span>
             <Input v-model="dateRange.start" type="date" :aria-invalid="Boolean(validationError)" />
@@ -152,14 +158,14 @@ onMounted(loadAttendance)
             <span>End date</span>
             <Input v-model="dateRange.end" type="date" :aria-invalid="Boolean(validationError)" />
           </label>
-          <div class="flex gap-2 sm:col-span-2 lg:col-span-1">
-            <Button type="submit" class="flex-1 lg:flex-none" :disabled="loading">Apply</Button>
-            <Button type="button" variant="outline" class="flex-1 lg:flex-none" :disabled="loading" @click="resetFilter">Reset</Button>
-          </div>
+          <p v-if="validationError" class="text-sm text-red-600">{{ validationError }}</p>
+          <SheetFooter class="mt-2 sm:justify-stretch">
+            <Button type="submit" class="flex-1" :disabled="loading">Apply</Button>
+            <Button type="button" variant="outline" class="flex-1" :disabled="loading" @click="resetFilter">Reset</Button>
+          </SheetFooter>
         </form>
-        <p v-if="validationError" class="mt-3 text-sm text-red-600">{{ validationError }}</p>
-      </CardContent>
-    </Card>
+      </SheetContent>
+    </Sheet>
 
     <Card v-if="error" class="mt-6 border-red-200 bg-red-50">
       <CardContent class="p-5 text-sm text-red-700">{{ error }}</CardContent>
