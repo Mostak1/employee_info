@@ -16,8 +16,8 @@ const showPassword = ref(false)
 
 async function submit() {
   if (await auth.login(form)) {
-    toast.success('Welcome back', { description: 'You are now signed in to Carenet HRM.' })
-    await router.replace({ name: 'today' })
+    toast.success('Welcome back', { description: 'You are now signed in to AWC HRM.' })
+    await router.replace({ name: 'todos' })
   } else {
     toast.error('Sign in failed', { description: auth.error })
   }
@@ -30,9 +30,9 @@ async function submit() {
       <CardHeader class="space-y-4 pb-5">
         <span class="grid size-12 place-items-center rounded-2xl bg-teal-700 text-xl font-bold text-white">C</span>
         <div class="space-y-2">
-          <p class="text-sm font-semibold uppercase tracking-wider text-teal-700">Carenet HRM</p>
+          <p class="text-sm font-semibold uppercase tracking-wider text-teal-700">AWC HRM</p>
           <CardTitle class="text-3xl tracking-tight">Welcome back</CardTitle>
-          <CardDescription>Sign in to view your attendance.</CardDescription>
+          <CardDescription>Sign in to view your tasks and attendance.</CardDescription>
         </div>
       </CardHeader>
       <CardContent>

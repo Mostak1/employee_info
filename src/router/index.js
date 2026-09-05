@@ -4,7 +4,7 @@ import AppLayout from '../layouts/AppLayout.vue'
 import AttendanceView from '../views/AttendanceView.vue'
 import LoginView from '../views/LoginView.vue'
 import ProfileView from '../views/ProfileView.vue'
-import TodayView from '../views/TodayView.vue'
+import TodosView from '../views/TodosView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,10 +13,11 @@ const router = createRouter({
     {
       path: '/',
       component: AppLayout,
-      redirect: '/today',
+      redirect: '/todos',
       children: [
-        { path: 'today', name: 'today', component: TodayView },
+        { path: 'today', redirect: { name: 'todos' } },
         { path: 'attendance', name: 'attendance', component: AttendanceView },
+        { path: 'todos', name: 'todos', component: TodosView },
         { path: 'profile', name: 'profile', component: ProfileView },
       ],
     },
@@ -26,7 +27,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   const auth = useAuthStore()
   if (!to.meta.guest && !auth.isAuthenticated) return { name: 'login' }
-  if (to.meta.guest && auth.isAuthenticated) return { name: 'today' }
+  if (to.meta.guest && auth.isAuthenticated) return { name: 'todos' }
 })
 
 export default router

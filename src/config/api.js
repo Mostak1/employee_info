@@ -3,6 +3,11 @@ export const API_ENDPOINTS = Object.freeze({
   logout: '/auth/logout',
   me: '/me',
   attendance: '/attendance',
+  leaveBalance: '/leave-balance',
+  upcomingHolidays: '/holidays/upcoming',
+  teamRoster: '/team-roster',
+  profileUpdateRequest: '/profile-update-request',
+  todos: '/todos',
 })
 
 export const DEFAULT_API_BASE_URL = '/api/v1/pwa'

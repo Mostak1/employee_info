@@ -1,17 +1,30 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { LogOut, UserRound } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const links = [
-  { name: 'today', label: 'Today', icon: '⌂' },
   { name: 'attendance', label: 'Attendance', icon: '▣' },
+  { name: 'todos', label: 'To Do', icon: '✓' },
   { name: 'profile', label: 'Profile', icon: '○' },
 ]
+
+const initials = computed(() => {
+  const name = auth.user?.name || auth.user?.username || 'Employee'
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('')
+})
 
 async function signOut() {
   await auth.logout()
@@ -24,14 +37,42 @@ async function signOut() {
   <div class="min-h-screen bg-slate-50 pb-20 text-slate-900 md:pb-0">
     <header class="border-b border-slate-200 bg-white">
       <div class="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
-        <RouterLink to="/today" class="flex items-center gap-3">
-          <span class="grid size-9 place-items-center rounded-xl bg-teal-700 font-bold text-white">C</span>
-          <span><strong class="block text-sm">Carenet HRM</strong><small class="block text-xs text-slate-500">Employee self-service</small></span>
+        <RouterLink to="/todos" class="flex items-center gap-3">
+          <span class="grid size-12 place-items-center rounded-xl bg-teal-700 font-bold text-white">AWC</span>
+          <span><strong class="block text-sm">AWC HRM</strong></span>
         </RouterLink>
-        <div class="flex items-center gap-3 text-right">
-          <span class="hidden text-sm sm:block">{{ auth.user?.name || 'Employee' }}</span>
-          <Button variant="ghost" size="icon" title="Sign out" @click="signOut">↪</Button>
-        </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <button
+              type="button"
+              class="flex items-center gap-2 rounded-full p-1 outline-none transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+              aria-label="Open account menu"
+            >
+              <span class="hidden max-w-40 truncate text-sm font-medium text-slate-700 sm:block">{{ auth.user?.name || 'Employee' }}</span>
+              <Avatar class="size-9 ring-2 ring-white">
+                <AvatarImage v-if="auth.user?.profile_photo" :src="auth.user.profile_photo" :alt="`${auth.user?.name || 'Employee'} profile photo`" />
+                <AvatarFallback>{{ initials }}</AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" class="w-56">
+            <DropdownMenuLabel>
+              <p class="truncate">{{ auth.user?.name || 'Employee' }}</p>
+              <p class="mt-0.5 truncate text-xs font-normal text-slate-500">{{ auth.user?.username || auth.user?.email || 'Signed in employee' }}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem @select="router.push({ name: 'profile' })">
+              <UserRound class="size-4" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem class="text-red-600 focus:bg-red-50 focus:text-red-700" @select="signOut">
+              <LogOut class="size-4" />
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
 
