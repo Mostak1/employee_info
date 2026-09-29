@@ -6,8 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import api from '../lib/api'
-import { API_ENDPOINTS } from '../config/api'
+import { runtimeRequest } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -84,7 +83,7 @@ async function loadRequest() {
   requestLoading.value = true
   requestError.value = ''
   try {
-    const { data } = await api.get(API_ENDPOINTS.profileUpdateRequest)
+    const { data } = await runtimeRequest('get', 'profileUpdateRequest')
     pendingRequest.value = data.request || null
   } catch (requestException) {
     requestError.value = requestException.response?.data?.message || 'Unable to load your profile request status.'
@@ -98,7 +97,7 @@ async function submitRequest() {
   submitError.value = ''
   submitSuccess.value = ''
   try {
-    const { data } = await api.post(API_ENDPOINTS.profileUpdateRequest, { ...form })
+    const { data } = await runtimeRequest('post', 'profileUpdateRequest', { data: { ...form } })
     pendingRequest.value = data.request || null
     requestOpen.value = false
     submitSuccess.value = data.message || 'Your profile update request has been submitted for review.'

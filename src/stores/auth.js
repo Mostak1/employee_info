@@ -1,7 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import api from '../lib/api'
-import { API_ENDPOINTS } from '../config/api'
+import { runtimeRequest } from '../lib/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('carenet_access_token'))
@@ -14,7 +13,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     error.value = ''
     try {
-      const { data } = await api.post(API_ENDPOINTS.login, credentials)
+      const { data } = await runtimeRequest('post', 'login', { data: credentials })
       token.value = data.access_token
       localStorage.setItem('carenet_access_token', token.value)
       user.value = data.user || null
@@ -29,7 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    try { await api.post(API_ENDPOINTS.logout) } catch { /* local cleanup still applies */ }
+    try { await runtimeRequest('post', 'logout') } catch { /* local cleanup still applies */ }
     token.value = null
     localStorage.removeItem('carenet_access_token')
     localStorage.removeItem('carenet_user')
@@ -37,7 +36,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchCurrentUser() {
-    const { data } = await api.get(API_ENDPOINTS.me)
+    const { data } = await runtimeRequest('get', 'me')
     if (data.user) {
       user.value = data.user
       localStorage.setItem('carenet_user', JSON.stringify(user.value))

@@ -1,21 +1,21 @@
-# Vue 3 + Vite
-
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
-
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
 # employee_info
 
 ## API configuration
 
-The PWA loads `public/config.json` at startup. Set `apiBaseUrl` there to change the
-backend URL in a deployed build; refresh the app after changing the file. The value
-should include the `/api/v1/pwa` path and should not include a trailing slash.
+The PWA loads `public/config.json` at startup. Set `runtimeConfigUrl` there to the
+location-specific ERP runtime configuration endpoint. The ERP response supplies
+the normalized `/api` root, endpoint paths, and runtime key. The PWA refreshes this
+configuration automatically at startup, on focus, on visibility changes, and after
+a runtime API `404`.
 
-For local development or when the runtime file is unavailable, set `VITE_API_URL` in
-`.env.development`. The fallback order is:
+For local development or when the runtime file is unavailable, the fallback order is:
 
-1. `public/config.json` → `apiBaseUrl`
-2. `VITE_API_URL`
-3. `/api/v1/pwa`
+1. ERP runtime configuration from `runtimeConfigUrl`
+2. `public/config.json` -> `apiBaseUrl`
+3. `VITE_API_URL`
+4. `/api`
 
-Endpoint paths are defined centrally in `src/config/api.js`.
+Endpoint paths are accessed by endpoint key through `apiRoute()` in
+`src/config/api.js`. Runtime requests use `runtimeRequest()` so changed routes can
+be rebuilt and retried once. Every runtime-configured request sends
+`X-Api-Runtime-Key`.

@@ -15,8 +15,7 @@ import { Pagination, PaginationContent, PaginationNext, PaginationPrevious } fro
 import { Skeleton } from '@/components/ui/skeleton'
 import { ComboboxAnchor, ComboboxContent, ComboboxEmpty, ComboboxInput, ComboboxItem, ComboboxItemIndicator, ComboboxPortal, ComboboxRoot, ComboboxTrigger, ComboboxViewport } from 'reka-ui'
 import RichTextEditor from '@/components/tiptap/RichTextEditor.vue'
-import api from '../lib/api'
-import { API_ENDPOINTS } from '../config/api'
+import { runtimeRequest } from '../lib/api'
 import { normalizeRichText, richTextToPlainText, sanitizeRichText } from '../lib/richText'
 
 const todos = ref([])
@@ -133,7 +132,7 @@ async function loadTodos(page = 1) {
     if (filters.assigned_to !== 'all') params.assigned_to = filters.assigned_to
     if (filters.assigned_by_me) params.assigned_by_me = 1
 
-    const { data } = await api.get(API_ENDPOINTS.todos, { params })
+    const { data } = await runtimeRequest('get', 'todos', { params })
     todos.value = data.todos || []
     permissions.value = { ...permissions.value, ...(data.permissions || {}) }
     Object.assign(options, data.filters || {})
@@ -222,7 +221,10 @@ async function saveStatus() {
   statusError.value = ''
   statusSaving.value = true
   try {
-    await api.put(`${API_ENDPOINTS.todos}/${statusTodo.value.id}`, { status: statusValue.value })
+    await runtimeRequest('put', 'todo', {
+      endpointParams: { id: statusTodo.value.id },
+      data: { status: statusValue.value },
+    })
     toast.success('To Do status updated')
     statusOpen.value = false
     await loadTodos(meta.value.current_page)
@@ -246,7 +248,7 @@ async function archiveTask() {
   archiveSaving.value = true
   try {
     const page = meta.value.current_page
-    await api.delete(`${API_ENDPOINTS.todos}/${archiveTodo.value.id}`)
+    await runtimeRequest('delete', 'todo', { endpointParams: { id: archiveTodo.value.id } })
     toast.success('To Do archived')
     archiveOpen.value = false
     await loadTodos(page)
@@ -287,8 +289,11 @@ async function saveTodo() {
 
   saving.value = true
   try {
-    if (formMode.value === 'create') await api.post(API_ENDPOINTS.todos, payload)
-    else await api.put(`${API_ENDPOINTS.todos}/${selectedTodo.value.id}`, payload)
+    if (formMode.value === 'create') await runtimeRequest('post', 'todos', { data: payload })
+    else await runtimeRequest('put', 'todo', {
+      endpointParams: { id: selectedTodo.value.id },
+      data: payload,
+    })
     toast.success(formMode.value === 'create' ? 'To Do created' : 'To Do updated')
     formOpen.value = false
     await loadTodos(meta.value.current_page)

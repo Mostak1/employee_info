@@ -4,12 +4,13 @@ import { registerSW } from 'virtual:pwa-register'
 import './style.css'
 import App from './App.vue'
 import router from './router'
-import { loadRuntimeApiBaseUrl } from './config/api'
+import { loadRuntimeApiConfig, setupRuntimeApiRefreshListeners } from './config/api'
 import { configureApi } from './lib/api'
 
 async function bootstrap() {
-  const apiBaseUrl = await loadRuntimeApiBaseUrl()
-  configureApi(apiBaseUrl)
+  const runtime = await loadRuntimeApiConfig()
+  configureApi(runtime.baseUrl, runtime.runtimeKey)
+  setupRuntimeApiRefreshListeners()
   registerSW({ immediate: true })
 
   createApp(App).use(createPinia()).use(router).mount('#app')

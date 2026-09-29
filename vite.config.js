@@ -18,6 +18,19 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
+      workbox: {
+        globIgnores: ['**/config.json'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/config\.json$/,
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /\/api\/runtime-config\//,
+            handler: 'NetworkOnly',
+          },
+        ],
+      },
       manifest: {
         name: 'Carenet HRM',
         short_name: 'Carenet HRM',

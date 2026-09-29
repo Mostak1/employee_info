@@ -1,3 +1,4 @@
 {
-  "apiBaseUrl": "http://localhost/Carenet_ERP/public/api/v1/pwa"
+  "runtimeConfigUrl": "http://localhost/crm/Carenet_ERP/public/api/runtime-config/0mfZKurxxO2skcuEInkl2vJRegQAKPFskgEZY8UTl2NJXQvK",
+  "apiBaseUrl": "http://localhost/crm/Carenet_ERP/public/api"
 }

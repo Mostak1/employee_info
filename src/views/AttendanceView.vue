@@ -6,8 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import api from '../lib/api'
-import { API_ENDPOINTS } from '../config/api'
+import { runtimeRequest } from '../lib/api'
 
 const loading = ref(true)
 const error = ref('')
@@ -130,7 +129,7 @@ async function loadAttendance() {
   loading.value = true
   error.value = ''
   try {
-    const { data } = await api.get(API_ENDPOINTS.attendance, {
+    const { data } = await runtimeRequest('get', 'attendance', {
       params: {
         start_date: dateRange.value.start,
         end_date: dateRange.value.end,
@@ -156,7 +155,7 @@ async function loadCasualLeaveBalance() {
   leaveBalanceError.value = ''
 
   try {
-    const { data } = await api.get(API_ENDPOINTS.leaveBalance)
+    const { data } = await runtimeRequest('get', 'leaveBalance')
     const remainingLeave = Number(data.remaining_leave)
     casualLeaveRemaining.value = Number.isFinite(remainingLeave) ? Math.max(0, remainingLeave) : 0
   } catch (requestError) {
@@ -171,7 +170,7 @@ async function loadUpcomingHolidays() {
   holidaysError.value = ''
 
   try {
-    const { data } = await api.get(API_ENDPOINTS.upcomingHolidays)
+    const { data } = await runtimeRequest('get', 'upcomingHolidays')
     upcomingHolidays.value = data.holidays || []
   } catch (requestError) {
     holidaysError.value = requestError.response?.data?.message || 'Unable to load upcoming holidays.'
@@ -185,7 +184,7 @@ async function loadTeamRoster() {
   rosterError.value = ''
 
   try {
-    const { data } = await api.get(API_ENDPOINTS.teamRoster)
+    const { data } = await runtimeRequest('get', 'teamRoster')
     teamRoster.value = {
       department: data.department || null,
       range: data.range || null,
