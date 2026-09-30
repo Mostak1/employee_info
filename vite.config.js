@@ -6,6 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // base: '/crm/employee_info/',
   base: './',
   resolve: {
     alias: {
@@ -17,7 +18,10 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      devOptions: {
+        enabled: true,
+      },
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
       workbox: {
         globIgnores: ['**/config.json'],
         runtimeCaching: [
@@ -38,8 +42,34 @@ export default defineConfig({
         theme_color: '#0f766e',
         background_color: '#f4f7f9',
         display: 'standalone',
-        start_url: './',
-        icons: [{ src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+        orientation: 'portrait-primary',
+        scope: '/crm/employee_info/',
+        start_url: '/crm/employee_info/',
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+          {
+            src: 'favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+          },
+        ],
       },
     }),
   ],
