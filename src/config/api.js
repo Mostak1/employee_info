@@ -4,12 +4,22 @@ export const API_ENDPOINTS = {
   me: '/pwa/me',
   attendance: '/pwa/attendance',
   attendanceCurrentMonth: '/pwa/attendance/current-month',
+  attendanceStatus: '/pwa/attendance/status',
+  clockIn: '/pwa/attendance/clock-in',
+  clockOut: '/pwa/attendance/clock-out',
+  requestLocation: '/pwa/attendance/request-location',
   leaveBalance: '/pwa/leave-balance',
   upcomingHolidays: '/pwa/holidays/upcoming',
   teamRoster: '/pwa/team-roster',
   profileUpdateRequest: '/pwa/profile-update-request',
   todos: '/pwa/todos',
   todo: '/pwa/todos/{id}',
+  requests: '/pwa/requests',
+  requestsMeta: '/pwa/requests/meta',
+  applyLeave: '/pwa/requests/leave',
+  applyOvertime: '/pwa/requests/overtime',
+  cancelLeave: '/pwa/requests/leave/{id}',
+  cancelOvertime: '/pwa/requests/overtime/{id}',
 }
 
 export const DEFAULT_API_BASE_URL = '/api'

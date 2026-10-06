@@ -15,7 +15,7 @@ const variants = {
 </script>
 
 <template>
-  <span :class="cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors', variants[props.variant] || variants.default, props.class)">
+  <span :class="cn('inline-flex shrink-0 whitespace-nowrap items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors', variants[props.variant] || variants.default, props.class)">
     <slot />
   </span>
 </template>

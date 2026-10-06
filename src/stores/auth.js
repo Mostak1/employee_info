@@ -27,12 +27,16 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function logout() {
-    try { await runtimeRequest('post', 'logout') } catch { /* local cleanup still applies */ }
+  function clearSession() {
     token.value = null
+    user.value = null
     localStorage.removeItem('carenet_access_token')
     localStorage.removeItem('carenet_user')
-    user.value = null
+  }
+
+  async function logout() {
+    try { await runtimeRequest('post', 'logout') } catch { /* local cleanup still applies */ }
+    clearSession()
   }
 
   async function fetchCurrentUser() {
@@ -44,5 +48,5 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value
   }
 
-  return { token, user, loading, error, isAuthenticated, login, logout, fetchCurrentUser }
+  return { token, user, loading, error, isAuthenticated, login, logout, clearSession, fetchCurrentUser }
 })

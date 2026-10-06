@@ -105,8 +105,8 @@ function formatDateTime(value) {
 
 function badgeClass(type, value) {
   const classes = type === 'status'
-    ? { new: 'bg-amber-100 text-amber-700', in_progress: 'bg-blue-100 text-blue-700', on_hold: 'bg-rose-100 text-rose-700', completed: 'bg-emerald-100 text-emerald-700' }
-    : { low: 'bg-slate-100 text-slate-700', medium: 'bg-amber-100 text-amber-700', high: 'bg-orange-100 text-orange-700', urgent: 'bg-red-100 text-red-700' }
+    ? { new: 'bg-amber-100 text-amber-800 border-amber-200', in_progress: 'bg-blue-100 text-blue-800 border-blue-200', on_hold: 'bg-rose-100 text-rose-800 border-rose-200', completed: 'bg-emerald-100 text-emerald-800 border-emerald-200' }
+    : { low: 'bg-slate-100 text-slate-700 border-slate-200', medium: 'bg-amber-100 text-amber-800 border-amber-200', high: 'bg-orange-100 text-orange-800 border-orange-200', urgent: 'bg-red-100 text-red-800 border-red-200' }
   return classes[value] || 'bg-slate-100 text-slate-700'
 }
 
@@ -389,13 +389,13 @@ onMounted(() => loadTodos())
           <CardContent class="p-0">
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm">
-                <thead class="border-b bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <tr><th class="px-5 py-3">Task</th><th class="px-5 py-3">Status</th><th class="px-5 py-3">Dates</th><th class="px-5 py-3">Assigned to</th><th class="px-5 py-3 text-right">Action</th></tr>
+                <thead class="border-b bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  <tr><th class="px-5 py-3">Task</th><th class="whitespace-nowrap px-5 py-3">Status</th><th class="whitespace-nowrap px-5 py-3">Dates</th><th class="px-5 py-3">Assigned to</th><th class="px-5 py-3 text-right">Action</th></tr>
                 </thead>
                 <tbody class="divide-y">
                   <tr v-for="todo in todos" :key="todo.id" class="hover:bg-slate-50">
                     <td class="max-w-sm px-5 py-4"><button class="text-left" @click="openDetails(todo)"><p class="text-xs text-slate-500">{{ todo.task_id }}</p><p class="mt-1 font-medium text-slate-900">{{ todo.task }}</p><Badge v-if="todo.priority" class="mt-2" :class="badgeClass('priority', todo.priority)">{{ todo.priority_label }}</Badge></button></td>
-                    <td class="px-5 py-4"><Badge :class="badgeClass('status', todo.status)">{{ todo.status_label }}</Badge></td>
+                    <td class="whitespace-nowrap px-5 py-4"><Badge :class="badgeClass('status', todo.status)">{{ todo.status_label }}</Badge></td>
                     <td class="whitespace-nowrap px-5 py-4 text-slate-600">{{ formatDate(todo.start_date) }}<span v-if="todo.end_date"> – {{ formatDate(todo.end_date) }}</span></td>
                     <td class="max-w-48 px-5 py-4 text-slate-600">{{ todo.assigned_to?.map((person) => person.name).join(', ') || 'Not provided' }}</td>
                     <td class="px-5 py-4 text-right">

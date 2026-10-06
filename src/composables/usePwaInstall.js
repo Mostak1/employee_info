@@ -8,7 +8,7 @@ const showGenericInstructions = ref(false)
 const isInitialized = ref(false)
 
 const DISMISS_KEY = 'carenet_pwa_prompt_dismissed_until'
-const COOLDOWN_SECONDS = 30
+const COOLDOWN_SECONDS = 60
 let dismissTimer = null
 
 function scheduleReappear(seconds = COOLDOWN_SECONDS) {

@@ -4,6 +4,7 @@ import AppLayout from '../layouts/AppLayout.vue'
 import AttendanceView from '../views/AttendanceView.vue'
 import LoginView from '../views/LoginView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import RequestsView from '../views/RequestsView.vue'
 import TodosView from '../views/TodosView.vue'
 
 const router = createRouter({
@@ -17,6 +18,7 @@ const router = createRouter({
       children: [
         { path: 'today', redirect: { name: 'todos' } },
         { path: 'attendance', name: 'attendance', component: AttendanceView },
+        { path: 'requests', name: 'requests', component: RequestsView },
         { path: 'todos', name: 'todos', component: TodosView },
         { path: 'profile', name: 'profile', component: ProfileView },
       ],

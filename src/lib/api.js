@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from 'vue-sonner'
 import {
   apiRoute,
   DEFAULT_API_BASE_URL,
@@ -37,5 +38,37 @@ api.interceptors.request.use((config) => {
   }
   return config
 })
+
+let isHandlingUnauthorized = false
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || ''
+      const isLoginRequest = requestUrl.includes('/pwa/login') || requestUrl.endsWith('login')
+
+      if (!isLoginRequest) {
+        localStorage.removeItem('carenet_access_token')
+        localStorage.removeItem('carenet_user')
+
+        if (!isHandlingUnauthorized) {
+          isHandlingUnauthorized = true
+          toast.error('Session expired', {
+            description: 'Your session has ended. Please sign in again.',
+          })
+
+          setTimeout(() => {
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login'
+            }
+            isHandlingUnauthorized = false
+          }, 300)
+        }
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default api
