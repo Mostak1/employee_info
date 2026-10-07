@@ -31,16 +31,36 @@ const initials = computed(() => {
     .join('')
 })
 
-const details = computed(() => [
-  { label: 'Username', value: profile.value.username },
-  { label: 'Email', value: profile.value.email },
-  { label: 'Employee ID', value: profile.value.employee_id },
-  { label: 'Contact number', value: profile.value.contact_number },
-  { label: 'Department', value: profile.value.department },
-  { label: 'Designation', value: profile.value.designation },
-  { label: 'Current address', value: profile.value.current_address },
-  { label: 'Permanent address', value: profile.value.permanent_address },
-])
+function formatCurrency(amount) {
+  const num = Number(amount) || 0
+  return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const details = computed(() => {
+  const items = [
+    { label: 'Username', value: profile.value.username },
+    { label: 'Email', value: profile.value.email },
+    { label: 'Employee ID', value: profile.value.employee_id },
+    { label: 'Customer ID', value: profile.value.customer_id || 'You are not included in the system' },
+  ]
+
+  if (profile.value.customer_id) {
+    items.push({
+      label: 'System Due',
+      value: `${profile.value.currency_symbol || '৳'}${formatCurrency(profile.value.customer_total_due || 0)}`,
+    })
+  }
+
+  items.push(
+    { label: 'Contact number', value: profile.value.contact_number },
+    { label: 'Department', value: profile.value.department },
+    { label: 'Designation', value: profile.value.designation },
+    { label: 'Current address', value: profile.value.current_address },
+    { label: 'Permanent address', value: profile.value.permanent_address },
+  )
+
+  return items
+})
 
 const form = reactive({
   surname: '',
@@ -165,6 +185,51 @@ onMounted(() => {
           </div>
           <h2 class="mt-4 text-xl font-semibold text-slate-900">{{ displayValue(profile.name) }}</h2>
           <p class="mt-1 text-sm text-slate-500">{{ displayValue(profile.designation) }}</p>
+
+          <div
+            v-if="profile.customer_id"
+            class="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20"
+            :title="profile.customer_name ? `Linked Customer: ${profile.customer_name}` : 'Linked Customer'"
+          >
+            <span class="size-1.5 rounded-full bg-emerald-500"></span>
+            Customer ID: {{ profile.customer_id }}
+          </div>
+          <div
+            v-else
+            class="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20"
+          >
+            <span class="size-1.5 rounded-full bg-amber-500"></span>
+            You are not included in the system
+          </div>
+
+          <!-- System Due Display -->
+          <div
+            v-if="profile.customer_id"
+            class="mt-4 w-full rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 text-center"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">System Due</span>
+              <span
+                v-if="Number(profile.customer_total_due || 0) > 0"
+                class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700"
+              >
+                Due Outstanding
+              </span>
+              <span
+                v-else
+                class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"
+              >
+                Cleared
+              </span>
+            </div>
+            <p
+              class="mt-1.5 text-2xl font-extrabold tracking-tight"
+              :class="Number(profile.customer_total_due || 0) > 0 ? 'text-red-600' : 'text-slate-900'"
+            >
+              {{ profile.currency_symbol || '৳' }}{{ formatCurrency(profile.customer_total_due || 0) }}
+            </p>
+          </div>
+
           <Button class="mt-5 w-full" :disabled="requestLoading" @click="openRequestForm">
             {{ pendingRequest ? 'Update request pending' : 'Request profile update' }}
           </Button>
