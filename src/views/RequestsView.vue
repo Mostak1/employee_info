@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   AlertCircle,
   Building2,
@@ -62,6 +62,7 @@ const error = ref('')
 
 const requests = ref([])
 const leaveTypes = ref([])
+const holidayOptions = ref([])
 const overtimeEligible = ref(false)
 const currentYear = ref(new Date().getFullYear())
 const applicant = ref({
@@ -110,8 +111,30 @@ const selectedLeaveTypeObj = computed(() => {
   return leaveTypes.value.find((t) => String(t.id) === String(leaveForm.value.essentials_leave_type_id)) || null
 })
 
+const isHolidayExchange = computed(() => {
+  const type = selectedLeaveTypeObj.value
+  if (!type) return false
+  if (type.is_holiday_exchange) return true
+  return (type.leave_type || '').toLowerCase().includes('holiday exchange')
+})
+
+const selectedHolidayOption = computed(() =>
+  holidayOptions.value.find((option) => option.date === leaveForm.value.start_date) || null,
+)
+
+watch([isHolidayExchange, holidayOptions], ([isExchange]) => {
+  if (!isExchange) return
+  const selected = holidayOptions.value.find((option) => option.date === leaveForm.value.start_date)
+  if (!selected || selected.already_applied) {
+    leaveForm.value.start_date = ''
+  }
+})
+
 const calculatedLeaveDays = computed(() => {
   if (!leaveForm.value.start_date || !leaveForm.value.end_date) return 0
+  if (isHolidayExchange.value) {
+    return 1
+  }
   const start = new Date(leaveForm.value.start_date)
   const end = new Date(leaveForm.value.end_date)
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0
@@ -184,6 +207,14 @@ function formatDate(value) {
   )
 }
 
+function holidayOptionLabel(option) {
+  const dateLabel = formatDate(option.date)
+  const name = option.name || 'Holiday'
+  const dayLabel = option.day_count > 1 ? ` (Day ${option.day_index} of ${option.day_count})` : ''
+  const appliedLabel = option.already_applied ? ' — Already applied' : ''
+  return `${dateLabel} — ${name}${dayLabel}${appliedLabel}`
+}
+
 function formatDateTime(value) {
   if (!value) return '—'
   const date = new Date(value)
@@ -206,7 +237,7 @@ function statusBadgeClass(status) {
   }[status] || 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
 }
 
-const ALLOWED_LEAVE_TYPES = ['casual leave', 'holiday exchange', 'unpaid leave', 'weekend exchange']
+const ALLOWED_LEAVE_TYPES = ['casual leave', 'holiday exchange', 'unpaid leave']
 
 function isAllowedLeaveType(typeName) {
   const norm = (typeName || '').toLowerCase().trim()
@@ -220,6 +251,7 @@ async function loadMeta() {
     const { data } = await runtimeRequest('get', 'requestsMeta')
     const rawLeaveTypes = data.leave_types || []
     leaveTypes.value = rawLeaveTypes.filter((t) => isAllowedLeaveType(t.leave_type))
+    holidayOptions.value = data.holiday_dates || []
     overtimeEligible.value = Boolean(data.overtime_eligible)
     currentYear.value = data.year || new Date().getFullYear()
     applicant.value = data.applicant || {
@@ -231,7 +263,10 @@ async function loadMeta() {
       manager_name: '',
     }
 
-    if (leaveTypes.value.length > 0 && !leaveForm.value.essentials_leave_type_id) {
+    const hasValidSelection = leaveTypes.value.some(
+      (type) => String(type.id) === String(leaveForm.value.essentials_leave_type_id),
+    )
+    if (leaveTypes.value.length > 0 && !hasValidSelection) {
       leaveForm.value.essentials_leave_type_id = String(leaveTypes.value[0].id)
     }
   } catch (err) {
@@ -263,8 +298,32 @@ async function handleApplyLeave() {
     return
   }
 
+  if (!selectedLeaveTypeObj.value) {
+    toast.error('Validation Error', { description: 'Please select a valid leave type.' })
+    return
+  }
+
+  if (isHolidayExchange.value) {
+    const selectedHoliday = holidayOptions.value.find(
+      (option) => option.date === leaveForm.value.start_date,
+    )
+    if (!selectedHoliday || selectedHoliday.already_applied) {
+      toast.error('Validation Error', { description: 'Please select a valid holiday date.' })
+      return
+    }
+  }
+
   if (calculatedLeaveDays.value <= 0) {
-    toast.error('Invalid Date Range', { description: 'End date cannot be earlier than start date.' })
+    toast.error('Invalid Date Range', {
+      description: isHolidayExchange.value
+        ? 'Please select both Holiday Date and Leave Date.'
+        : 'End date cannot be earlier than start date.',
+    })
+    return
+  }
+
+  if (isHolidayExchange.value && leaveForm.value.start_date === leaveForm.value.end_date) {
+    toast.error('Validation Error', { description: 'Holiday Date and Leave Date must be different.' })
     return
   }
 
@@ -280,6 +339,11 @@ async function handleApplyLeave() {
     return
   }
 
+  if (!leaveForm.value.application_description || !leaveForm.value.application_description.trim()) {
+    toast.error('Validation Error', { description: 'Please provide an application note.' })
+    return
+  }
+
   submitting.value = true
   try {
     await runtimeRequest('post', 'applyLeave', {
@@ -288,7 +352,7 @@ async function handleApplyLeave() {
         start_date: leaveForm.value.start_date,
         end_date: leaveForm.value.end_date,
         reason: leaveForm.value.reason.trim(),
-        application_description: leaveForm.value.application_description?.trim() || undefined,
+        application_description: leaveForm.value.application_description.trim(),
       },
     })
 
@@ -428,7 +492,7 @@ onMounted(() => {
         :key="type.id"
         class="overflow-hidden border-teal-100 bg-white shadow-xs transition hover:shadow-md"
       >
-        <CardContent class="p-3.5 sm:p-4">
+        <CardContent class="px-3.5 sm:px-4">
           <div class="flex items-center justify-between">
             <span class="rounded bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-teal-700 uppercase">
               {{ type.prefix || 'LEAVE' }}
@@ -551,6 +615,14 @@ onMounted(() => {
                   <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">
                     {{ req.category === 'leave' ? `${req.duration_days} Day(s)` : `${req.duration_hours} Hour(s)` }}
                   </span>
+                </div>
+
+                <div
+                  v-if="req.is_holiday_exchange && req.exchange_date"
+                  class="mt-1 flex items-center gap-1.5 text-xs font-medium text-teal-700"
+                >
+                  <Calendar class="size-3.5" />
+                  <span>Holiday worked: {{ formatDate(req.exchange_date) }}</span>
                 </div>
               </div>
 
@@ -756,17 +828,47 @@ onMounted(() => {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1.5">
                       <label class="text-xs font-bold uppercase tracking-wider text-slate-600">
-                        Start Date <span class="text-red-500">*</span>
+                        {{ isHolidayExchange ? 'Holiday Date' : 'Start Date' }} <span class="text-red-500">*</span>
                       </label>
-                      <Input v-model="leaveForm.start_date" type="date" required />
+                      <Select v-if="isHolidayExchange" v-model="leaveForm.start_date">
+                        <SelectTrigger class="w-full bg-white">
+                          <SelectValue placeholder="Select holiday date" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem
+                            v-for="option in holidayOptions"
+                            :key="option.date"
+                            :value="option.date"
+                            :disabled="option.already_applied"
+                            :text-value="holidayOptionLabel(option)"
+                          >
+                            {{ holidayOptionLabel(option) }}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input v-else v-model="leaveForm.start_date" type="date" required />
                     </div>
                     <div class="space-y-1.5">
                       <label class="text-xs font-bold uppercase tracking-wider text-slate-600">
-                        End Date <span class="text-red-500">*</span>
+                        {{ isHolidayExchange ? 'Leave Date' : 'End Date' }} <span class="text-red-500">*</span>
                       </label>
-                      <Input v-model="leaveForm.end_date" type="date" :min="leaveForm.start_date" required />
+                      <Input
+                        v-model="leaveForm.end_date"
+                        type="date"
+                        :min="isHolidayExchange ? undefined : leaveForm.start_date"
+                        required
+                      />
                     </div>
                   </div>
+
+                  <p v-if="isHolidayExchange && holidayOptions.length === 0" class="text-xs font-medium text-amber-700">
+                    No upcoming holidays available. Please contact HR.
+                  </p>
+
+                  <p v-if="isHolidayExchange" class="text-xs text-slate-500">
+                    Select the holiday you worked as <strong>Holiday Date</strong> and the day you will take off as
+                    <strong>Leave Date</strong>. The exchange records 1 day of leave on the Leave Date.
+                  </p>
 
                   <!-- Duration Pill -->
                   <div class="rounded-xl border border-teal-200 bg-teal-50/70 p-3 text-xs text-teal-900">
@@ -791,12 +893,14 @@ onMounted(() => {
                   <!-- Application Note / Description -->
                   <div class="space-y-1.5">
                     <label class="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      Application Note <span class="text-slate-400 font-normal">(Optional)</span>
+                      Application Note <span class="text-red-500">*</span>
                     </label>
                     <Textarea
                       v-model="leaveForm.application_description"
                       placeholder="Write your note or reason details here…"
                       rows="4"
+                      class="field-sizing-fixed"
+                      required
                     />
                   </div>
                 </div>
@@ -817,14 +921,26 @@ onMounted(() => {
 
                       <!-- Subject -->
                       <p class="font-semibold text-slate-900">
-                        <strong>Subject:</strong> Leave Application for <span class="text-teal-800">{{ leaveForm.reason || '[reason]' }}</span>
+                        <strong>Subject:</strong>
+                        {{ isHolidayExchange ? 'Holiday Exchange Application' : 'Leave Application' }} for
+                        <span class="text-teal-800">{{ leaveForm.reason || '[reason]' }}</span>
                       </p>
 
                       <!-- Salutation -->
                       <p>Dear <strong class="text-slate-900">{{ applicant.manager_name || 'Mamun Abdullah' }}</strong>,</p>
 
                       <!-- Body text -->
-                      <p>
+                      <p v-if="isHolidayExchange">
+                        I am writing to formally request a
+                        <strong class="text-teal-800">{{ selectedLeaveTypeObj?.leave_type || 'Holiday Exchange' }}</strong>
+                        for working on the holiday
+                        <strong class="text-teal-800">{{ selectedHolidayOption?.name || 'Holiday' }}</strong>
+                        on
+                        <strong class="text-slate-900">{{ leaveForm.start_date ? formatDate(leaveForm.start_date) : '[Holiday Date]' }}</strong>,
+                        taking my leave on
+                        <strong class="text-slate-900">{{ leaveForm.end_date ? formatDate(leaveForm.end_date) : '[Leave Date]' }}</strong>.
+                      </p>
+                      <p v-else>
                         I am writing to formally request a
                         <strong class="text-teal-800">{{ selectedLeaveTypeObj?.leave_type || 'Casual Leave' }}</strong>
                         of absence from
@@ -864,7 +980,11 @@ onMounted(() => {
                 <Button
                   type="submit"
                   class="w-full sm:w-auto sm:ml-auto gap-2 rounded-xl bg-teal-700 px-6 font-bold text-white hover:bg-teal-800"
-                  :disabled="submitting || calculatedLeaveDays <= 0"
+                  :disabled="
+                    submitting ||
+                    calculatedLeaveDays <= 0 ||
+                    (isHolidayExchange && (!selectedHolidayOption || selectedHolidayOption.already_applied))
+                  "
                 >
                   <LoaderCircle v-if="submitting" class="size-4 animate-spin" />
                   <Send v-else class="size-4" />
