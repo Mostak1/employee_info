@@ -86,6 +86,8 @@ const rosterError = ref('')
 const teamRoster = ref({ department: null, range: null, days: [], employees: [] })
 const period = ref(null)
 const summary = ref({ total_days: 0, present_days: 0, late_days: 0, absent_days: 0 })
+const requiredWorkingHours = ref(null)
+const punchCorrectionCount = ref(0)
 const attendance = ref([])
 const selectedPeriod = ref('this_month')
 const dateRange = ref(getMonthRange('this_month'))
@@ -116,24 +118,100 @@ const periodLabel = computed(() => {
   return start === end ? start : `${start} – ${end}`
 })
 
-const averageWorkingHours = computed(() => {
+const averageWorkingHoursValue = computed(() => {
   const workingDays = attendance.value.filter((day) => {
     const isWorkingDay = day.status === 'present' || day.status === 'late'
     return isWorkingDay && Number.isFinite(Number(day.worked_hours))
   })
 
-  if (workingDays.length === 0) return '0.00 hrs'
+  if (workingDays.length === 0) return 0
 
   const totalHours = workingDays.reduce((total, day) => total + Number(day.worked_hours), 0)
-  return `${(totalHours / workingDays.length).toFixed(2)} hrs`
+  return totalHours / workingDays.length
 })
+
+const averageWorkingHours = computed(() => `${averageWorkingHoursValue.value.toFixed(2)} hrs`)
+
+const hasRequiredWorkingHours = computed(
+  () => Number.isFinite(requiredWorkingHours.value) && requiredWorkingHours.value > 0,
+)
+
+function hasSamePunchTimestamp(clockIn, clockOut) {
+  if (!clockIn || !clockOut) return false
+
+  const parseTimestamp = (value) => {
+    const timestamp = String(value).replace(' ', 'T')
+    const parsed = new Date(timestamp).getTime()
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  const clockInTime = parseTimestamp(clockIn)
+  const clockOutTime = parseTimestamp(clockOut)
+  return clockInTime !== null && clockOutTime !== null
+    ? clockInTime === clockOutTime
+    : String(clockIn) === String(clockOut)
+}
+
+function isMissingClockOut(day) {
+  return Boolean(day?.clock_in)
+    && (!day.clock_out || hasSamePunchTimestamp(day.clock_in, day.clock_out))
+}
+
+function formatClockOut(day) {
+  return isMissingClockOut(day) ? 'Missing' : formatTime(day?.clock_out)
+}
+
+function formatWorkedHours(day) {
+  if (!day?.clock_in) return '—'
+  if (isMissingClockOut(day)) {
+    return punchData.value.today && day.date === punchData.value.today ? 'In progress' : 'Incomplete'
+  }
+  if (day.worked_hours == null || day.worked_hours === '') return '—'
+  return day.worked_hours
+}
+
+function formatLateMinutes(day) {
+  if (!day?.clock_in || day.late_minutes == null || day.late_minutes === '') return '—'
+
+  const minutes = Number(day.late_minutes)
+  if (!Number.isFinite(minutes)) return '—'
+  if (minutes > 0) return `${minutes} min late`
+  if (minutes < 0) return `${Math.abs(minutes)} min early`
+  return 'On time'
+}
+
+function isDayBelowRequiredHours(day) {
+  if (
+    !day?.clock_in
+    || isMissingClockOut(day)
+    || !hasRequiredWorkingHours.value
+    || day.worked_hours == null
+    || day.worked_hours === ''
+  ) return false
+
+  const workedHours = Number(day.worked_hours)
+  return Number.isFinite(workedHours) && workedHours < requiredWorkingHours.value
+}
+
+const isBelowRequiredWorkingHours = computed(
+  () => hasRequiredWorkingHours.value && averageWorkingHoursValue.value < requiredWorkingHours.value,
+)
 
 const summaryCards = computed(() => [
   { label: 'Total days', value: summary.value.total_days, tone: 'bg-blue-600' },
   { label: 'Present', value: summary.value.present_days, tone: 'bg-emerald-600' },
   { label: 'Late', value: summary.value.late_days, tone: 'bg-amber-500' },
   { label: 'Absent', value: summary.value.absent_days, tone: 'bg-red-600' },
-  { label: 'Avg working hours', value: averageWorkingHours.value, tone: 'bg-violet-600' },
+  { label: 'Punch corrections', value: punchCorrectionCount.value, tone: 'bg-slate-700' },
+  {
+    label: hasRequiredWorkingHours.value ? 'Required working hours' : 'Avg working hours',
+    value: hasRequiredWorkingHours.value
+      ? `${requiredWorkingHours.value.toFixed(2)} hrs`
+      : averageWorkingHours.value,
+    secondary: hasRequiredWorkingHours.value ? `Avg: ${averageWorkingHours.value}` : null,
+    tone: 'bg-violet-600',
+    belowRequired: isBelowRequiredWorkingHours.value,
+  },
   {
     label: 'Casual leave left',
     value: leaveBalanceLoading.value ? '…' : leaveBalanceError.value ? '—' : `${casualLeaveRemaining.value} days`,
@@ -186,7 +264,7 @@ function formatDayOfMonth(value) {
 function statusClass(status) {
   return {
     present: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300/60',
-    late: 'bg-amber-100 text-amber-800 ring-1 ring-amber-300/60',
+    late: 'bg-red-100 text-red-800 ring-1 ring-red-600/60',
     absent: 'bg-red-100 text-red-800 ring-1 ring-red-300/60',
     leave: 'bg-violet-100 text-violet-800 ring-1 ring-violet-300/60',
     unpaid_leave: 'bg-orange-100 text-orange-800 ring-1 ring-orange-300/60',
@@ -230,6 +308,13 @@ async function loadAttendance() {
       dateRange.value = { start: data.period.start_date, end: data.period.end_date }
     }
     summary.value = { ...summary.value, ...(data.summary || {}) }
+    const requiredHours = Number(data.required_working_hours)
+    requiredWorkingHours.value =
+      data.required_working_hours != null && Number.isFinite(requiredHours) && requiredHours > 0
+        ? requiredHours
+        : null
+    const correctionCount = Number(data.punch_correction_count ?? 0)
+    punchCorrectionCount.value = Number.isFinite(correctionCount) && correctionCount >= 0 ? correctionCount : 0
     attendance.value = data.attendance || []
     return true
   } catch (requestError) {
@@ -710,7 +795,7 @@ onBeforeUnmount(() => {
 
     <!-- Remote Attendance Quick Clock Card -->
     <Card v-if="punchData.allow_remote" class="mt-6 overflow-hidden border-teal-200 bg-gradient-to-br from-teal-50/70 via-white to-slate-50 shadow-sm">
-      <CardContent class="p-4 sm:p-6">
+      <CardContent class="px-4 sm:px-6">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div class="space-y-1">
             <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-teal-700">
@@ -840,8 +925,13 @@ onBeforeUnmount(() => {
     </Card>
 
     <div v-else-if="loading" class="mt-6" role="status" aria-live="polite" aria-label="Loading attendance">
-      <div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-6">
-        <Card v-for="item in 6" :key="item" class="gap-0 overflow-hidden border-0 py-0">
+      <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-7">
+        <Card
+          v-for="item in 7"
+          :key="item"
+          :class="item === 7 ? 'col-span-2 sm:col-span-1' : ''"
+          class="gap-0 overflow-hidden border-0 py-0"
+        >
           <CardContent class="flex min-h-[84px] flex-col items-center justify-center gap-2 px-2 py-2 sm:min-h-[96px] sm:px-5 sm:py-4">
             <Skeleton class="h-3 w-16" />
             <Skeleton class="h-7 w-10" />
@@ -862,12 +952,46 @@ onBeforeUnmount(() => {
     </div>
 
     <template v-else>
-      <div class="mt-6 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-6">
-        <Card v-for="item in summaryCards" :key="item.label" :class="['gap-0 overflow-hidden border-0 py-0 text-white', item.tone]">
+      <div class="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-7">
+        <Card
+          v-for="(item, index) in summaryCards"
+          :key="item.label"
+          :class="[
+            'gap-0 overflow-hidden py-0 text-white',
+            item.tone,
+            item.belowRequired ? 'bg-slate-100 border-2 border-red-400' : 'border-0',
+            summaryCards.length % 2 === 1 && index === summaryCards.length - 1
+              ? 'col-span-2 sm:col-span-1'
+              : '',
+          ]"
+        >
           <CardContent class="p-0">
             <div class="flex min-h-[84px] flex-col items-center justify-center px-2 py-2 text-center sm:min-h-[96px] sm:px-5 sm:py-4">
-              <p class="text-xs font-medium leading-tight text-white/80 sm:text-sm">{{ item.label }}</p>
-              <p class="mt-1 text-2xl font-bold leading-none sm:text-3xl">{{ item.value }}</p>
+              <p
+                :class="[
+                  'text-xs font-medium leading-tight sm:text-sm',
+                  item.belowRequired ? 'text-slate-700' : 'text-white/80',
+                ]"
+              >
+                {{ item.label }}
+              </p>
+              <p
+                :class="[
+                  'mt-1 text-2xl font-bold leading-none sm:text-3xl',
+                  item.belowRequired ? 'text-red-600' : '',
+                ]"
+              >
+                {{ item.value }}
+              </p>
+              <p
+                v-if="item.secondary"
+                :class="[
+                  'mt-0.5 text-[10px] font-semibold leading-tight sm:text-xs',
+                  item.belowRequired ? 'text-slate-600' : 'text-white/80',
+                ]"
+              >
+                {{ item.secondary }}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -888,18 +1012,27 @@ onBeforeUnmount(() => {
             No attendance records found for this date range.
           </div>
           <div v-else>
-            <div class="space-y-3 p-4 md:hidden">
+            <div class="space-y-3 px-4 md:hidden">
               <Card v-for="day in attendance" :key="day.date" class="shadow-none">
-                <CardContent class="p-4">
+                <CardContent class="px-4">
                   <div class="flex items-center justify-between gap-3">
                     <p class="font-semibold text-slate-800">{{ formatDate(day.date) }}</p>
                     <span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ statusLabel(day.status) }}</span>
                   </div>
                   <div class="mt-4 grid grid-cols-4 gap-2 text-xs">
                     <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Clock in</p><p class="mt-1 truncate font-medium text-slate-700">{{ formatTime(day.clock_in) }}</p></div>
-                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Clock out</p><p class="mt-1 truncate font-medium text-slate-700">{{ formatTime(day.clock_out) }}</p></div>
-                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Late</p><p class="mt-1 truncate font-medium text-slate-700">{{ day.late_minutes ? `${day.late_minutes} min` : '—' }}</p></div>
-                    <div class="min-w-0"><p class="text-[10px] leading-tight text-slate-500">Worked hours</p><p class="mt-1 truncate font-medium text-slate-700">{{ day.worked_hours || '—' }}</p></div>
+                    <div class="min-w-0">
+                      <p class="text-[10px] leading-tight text-slate-500">Clock out</p>
+                      <p :class="['mt-1 truncate', isMissingClockOut(day) ? 'font-semibold text-amber-700' : 'font-medium text-slate-700']">{{ formatClockOut(day) }}</p>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-[10px] leading-tight text-slate-500">Late</p>
+                      <p class="mt-1 truncate font-medium text-slate-700">{{ formatLateMinutes(day) }}</p>
+                    </div>
+                    <div class="min-w-0">
+                      <p class="text-[10px] leading-tight text-slate-500">Worked hours</p>
+                      <p :class="['mt-1 truncate font-medium', isMissingClockOut(day) ? 'text-amber-700' : isDayBelowRequiredHours(day) ? 'text-red-600' : 'text-slate-700']">{{ formatWorkedHours(day) }}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -914,8 +1047,8 @@ onBeforeUnmount(() => {
                   <td class="px-6 py-4 font-medium text-slate-800">{{ formatDate(day.date) }}</td>
                   <td class="px-6 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ statusLabel(day.status) }}</span></td>
                   <td class="px-6 py-4 text-slate-600">{{ formatTime(day.clock_in) }}</td>
-                  <td class="px-6 py-4 text-slate-600">{{ formatTime(day.clock_out) }}</td>
-                  <td class="px-6 py-4 text-right text-slate-600">{{ day.worked_hours || '—' }}</td>
+                  <td :class="['px-6 py-4', isMissingClockOut(day) ? 'font-semibold text-amber-700' : 'text-slate-600']">{{ formatClockOut(day) }}</td>
+                  <td :class="['px-6 py-4 text-right', isMissingClockOut(day) ? 'text-amber-700' : isDayBelowRequiredHours(day) ? 'text-red-600' : 'text-slate-600']">{{ formatWorkedHours(day) }}</td>
                 </tr>
               </tbody>
             </table>
