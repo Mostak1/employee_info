@@ -22,6 +22,12 @@ export function configureApi(baseUrl) {
   }
 }
 
+let sessionExpiredHandler = null
+
+export function registerSessionExpiredHandler(handler) {
+  sessionExpiredHandler = typeof handler === 'function' ? handler : null
+}
+
 export function runtimeRequest(method, endpointKey, { endpointParams = {}, ...options } = {}) {
   return api.request({
     ...options,
@@ -41,29 +47,50 @@ api.interceptors.request.use((config) => {
 
 let isHandlingUnauthorized = false
 
+function isLoginRequest(requestUrl = '') {
+  const path = String(requestUrl).split('?')[0].replace(/\/+$/, '')
+  return path.includes('/pwa/login') || /\/login$/i.test(path)
+}
+
+function getRequestToken(headers = {}) {
+  const authorization = headers.get?.('Authorization')
+    || headers.Authorization
+    || headers.authorization
+    || ''
+
+  return String(authorization).replace(/^Bearer\s+/i, '').trim()
+}
+
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response) => {
+    if (isLoginRequest(response.config?.url)) {
+      isHandlingUnauthorized = false
+    }
+    return response
+  },
+  async (error) => {
     if (error.response?.status === 401) {
       const requestUrl = error.config?.url || ''
-      const isLoginRequest = requestUrl.includes('/pwa/login') || requestUrl.endsWith('login')
+      const loginRequest = isLoginRequest(requestUrl)
 
-      if (!isLoginRequest) {
-        localStorage.removeItem('carenet_access_token')
-        localStorage.removeItem('carenet_user')
+      if (!loginRequest) {
+        // Ignore a delayed 401 from an older request if the employee has since
+        // signed in with a different token.
+        const requestToken = getRequestToken(error.config?.headers)
+        const currentToken = localStorage.getItem('carenet_access_token') || ''
 
-        if (!isHandlingUnauthorized) {
+        if (requestToken === currentToken && !isHandlingUnauthorized) {
           isHandlingUnauthorized = true
           toast.error('Session expired', {
             description: 'Your session has ended. Please sign in again.',
           })
 
-          setTimeout(() => {
-            if (window.location.pathname !== '/login') {
-              window.location.href = '/login'
-            }
-            isHandlingUnauthorized = false
-          }, 300)
+          try {
+            await sessionExpiredHandler?.()
+          } catch {
+            // The auth store is already cleared. The router guard will redirect
+            // on the next navigation if replacing the current route fails.
+          }
         }
       }
     }

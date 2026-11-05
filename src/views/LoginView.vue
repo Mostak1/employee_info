@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { Eye, EyeOff } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
@@ -10,17 +10,34 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
+const brandLogoUrl = `${import.meta.env.BASE_URL}awc.png`
 const form = reactive({ username: '', password: '' })
 const showPassword = ref(false)
 
 async function submit() {
   if (await auth.login(form)) {
-    toast.success('Welcome back', { description: 'You are now signed in to AWC HRM.' })
-    await router.replace({ name: 'todos' })
+    toast.success('Welcome back', { description: 'You are now signed in to AWC Employee App.' })
+    await router.replace(getPostLoginDestination())
   } else {
     toast.error('Sign in failed', { description: auth.error })
   }
+}
+
+function getPostLoginDestination() {
+  const redirect = route.query.redirect
+  if (typeof redirect !== 'string' || !redirect.startsWith('/') || redirect.startsWith('//')) {
+    return { name: 'todos' }
+  }
+
+  const destination = router.resolve(redirect)
+  const isKnownRoute = destination.matched.length > 0
+  const isLoginRoute = destination.name === 'login'
+    || destination.matched.some((matchedRoute) => matchedRoute.meta.guest)
+
+  if (!isKnownRoute || isLoginRoute) return { name: 'todos' }
+  return { path: destination.fullPath }
 }
 </script>
 
@@ -28,9 +45,11 @@ async function submit() {
   <main class="grid min-h-screen place-items-center bg-slate-50 px-4 py-8">
     <Card class="w-full max-w-md border-slate-200 shadow-sm">
       <CardHeader class="space-y-4 pb-5">
-        <span class="grid size-12 place-items-center rounded-2xl bg-teal-700 text-xl font-bold text-white">C</span>
+        <span class="grid size-12 place-items-center rounded-2xl bg-teal-50 p-1.5 ring-1 ring-teal-100">
+          <img :src="brandLogoUrl" alt="" aria-hidden="true" class="h-full w-full object-contain" />
+        </span>
         <div class="space-y-2">
-          <p class="text-sm font-semibold uppercase tracking-wider text-teal-700">AWC HRM</p>
+          <p class="text-sm font-semibold uppercase tracking-wider text-teal-700">AWC Employee App</p>
           <CardTitle class="text-3xl tracking-tight">Welcome back</CardTitle>
           <CardDescription>Sign in to view your tasks and attendance.</CardDescription>
         </div>
