@@ -349,7 +349,7 @@ onMounted(() => loadTodos())
       <div v-else class="mt-6 space-y-3">
         <div class="grid gap-3 md:hidden">
           <Card v-for="todo in todos" :key="todo.id" class="shadow-sm">
-            <CardContent class="p-4">
+            <CardContent class="px-6">
               <div class="flex min-w-0 items-start justify-between gap-3">
                 <button class="min-w-0 flex-1 overflow-hidden text-left" @click="openDetails(todo)">
                   <p class="text-xs font-medium text-slate-500">{{ todo.task_id }}</p>
