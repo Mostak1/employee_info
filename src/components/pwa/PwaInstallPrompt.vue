@@ -11,7 +11,7 @@
     >
       <aside
         v-if="canShowBanner"
-        aria-label="Install Carenet HRM App"
+        aria-label="Install AWC Employee App"
         :class="[
           'fixed inset-x-4 z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-xl backdrop-blur-md transition-all',
           hasBottomNav ? 'bottom-20 md:bottom-6' : 'bottom-4 sm:bottom-6'
@@ -22,13 +22,13 @@
           <div class="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-teal-50 shadow-inner">
             <img
               :src="iconUrl"
-              alt="Carenet HRM"
+              alt="AWC Employee App"
               class="size-full object-cover"
               @error="(e) => { e.target.src = fallbackIconUrl }"
             />
           </div>
           <div class="min-w-0 flex-1">
-            <h3 class="truncate text-sm font-semibold text-slate-900 leading-tight">Carenet HRM</h3>
+            <h3 class="truncate text-sm font-semibold text-slate-900 leading-tight">AWC Employee App</h3>
             <p class="truncate text-xs text-slate-500">Install app for faster access</p>
           </div>
         </div>
@@ -60,10 +60,10 @@
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <div class="mx-auto mb-2 grid size-14 place-items-center rounded-2xl bg-teal-50">
-            <img :src="iconUrl" alt="Carenet HRM" class="size-12 rounded-xl object-cover" />
+            <img :src="iconUrl" alt="AWC Employee App" class="size-12 rounded-xl object-cover" />
           </div>
           <DialogTitle class="text-center text-lg font-bold text-slate-900">
-            Install Carenet HRM
+            Install AWC Employee App
           </DialogTitle>
           <DialogDescription class="text-center text-sm text-slate-600">
             Install our Web App on your iPhone or iPad home screen for instant, offline-capable access.
@@ -119,13 +119,13 @@
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
           <div class="mx-auto mb-2 grid size-14 place-items-center rounded-2xl bg-teal-50">
-            <img :src="iconUrl" alt="Carenet HRM" class="size-12 rounded-xl object-cover" />
+            <img :src="iconUrl" alt="AWC Employee App" class="size-12 rounded-xl object-cover" />
           </div>
           <DialogTitle class="text-center text-lg font-bold text-slate-900">
-            Install Carenet HRM
+            Install AWC Employee App
           </DialogTitle>
           <DialogDescription class="text-center text-sm text-slate-600">
-            You can install Carenet HRM directly to your desktop or mobile apps menu.
+            You can install AWC Employee App directly to your desktop or mobile apps menu.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +146,7 @@
             </div>
             <div>
               <p class="font-medium text-slate-900">Or use Browser Menu (⋮)</p>
-              <p class="text-xs text-slate-500">Open menu $\rightarrow$ <span class="font-medium text-slate-800">"Save and share"</span> $\rightarrow$ <span class="font-semibold text-teal-700">"Install Carenet HRM"</span>.</p>
+              <p class="text-xs text-slate-500">Open menu $\rightarrow$ <span class="font-medium text-slate-800">"Save and share"</span> $\rightarrow$ <span class="font-semibold text-teal-700">"Install AWC Employee App"</span>.</p>
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@ const hasBottomNav = computed(() => Boolean(route?.name && route.name !== 'login
 
 const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') + '/'
 const iconUrl = computed(() => `${baseUrl}pwa-192x192.png`)
-const fallbackIconUrl = computed(() => `${baseUrl}favicon.svg`)
+const fallbackIconUrl = computed(() => `${baseUrl}pwa-512x512.png`)
 
 const {
   canShowBanner,

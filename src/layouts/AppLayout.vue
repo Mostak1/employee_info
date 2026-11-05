@@ -10,6 +10,7 @@ import { useAuthStore } from '../stores/auth'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+const brandLogoUrl = `${import.meta.env.BASE_URL}awc.png`
 const links = [
   { name: 'attendance', label: 'Attendance', icon: CalendarCheck },
   { name: 'requests', label: 'Requests', icon: Send },
@@ -29,7 +30,7 @@ const initials = computed(() => {
 
 async function signOut() {
   await auth.logout()
-  toast.success('Signed out', { description: 'Your Carenet HRM session has ended.' })
+  toast.success('Signed out', { description: 'Your AWC Employee App session has ended.' })
   router.push('/login')
 }
 </script>
@@ -39,8 +40,10 @@ async function signOut() {
     <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div class="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
         <RouterLink to="/todos" class="flex items-center gap-3">
-          <span class="grid size-10 place-items-center rounded-xl bg-teal-700 font-bold text-white shadow-xs">AWC</span>
-          <span><strong class="block text-sm">AWC HRM</strong></span>
+          <span class="grid size-10 place-items-center rounded-xl bg-teal-50 p-1 ring-1 ring-teal-100 shadow-xs">
+            <img :src="brandLogoUrl" alt="" aria-hidden="true" class="h-full w-full object-contain" />
+          </span>
+          <span><strong class="block text-sm">AWC Employee App</strong></span>
         </RouterLink>
 
         <!-- Desktop Header Nav -->

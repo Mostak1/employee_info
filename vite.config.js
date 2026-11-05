@@ -21,7 +21,7 @@ export default defineConfig({
       devOptions: {
         enabled: true,
       },
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
+      includeAssets: ['awc.png', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
       workbox: {
         globIgnores: ['**/config.json'],
         runtimeCaching: [
@@ -36,8 +36,8 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'Carenet HRM',
-        short_name: 'Carenet HRM',
+        name: 'AWC Employee App',
+        short_name: 'AWC Employee App',
         description: 'Employee self-service attendance',
         theme_color: '#0f766e',
         background_color: '#f4f7f9',
@@ -63,11 +63,6 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
-          },
-          {
-            src: 'favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
           },
         ],
       },
