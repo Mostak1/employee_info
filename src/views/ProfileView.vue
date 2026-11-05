@@ -21,6 +21,7 @@ const submitSuccess = ref('')
 const pendingRequest = ref(null)
 
 const profile = computed(() => auth.user || {})
+const hasSystemDue = computed(() => Number(profile.value.customer_total_due || 0) > 0)
 const initials = computed(() => {
   const name = profile.value.name || profile.value.username || 'Employee'
   return name
@@ -48,6 +49,7 @@ const details = computed(() => {
     items.push({
       label: 'System Due',
       value: `${profile.value.currency_symbol || '৳'}${formatCurrency(profile.value.customer_total_due || 0)}`,
+      isDue: hasSystemDue.value,
     })
   }
 
@@ -173,7 +175,7 @@ onMounted(() => {
 
     <div v-else class="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
       <Card>
-        <CardContent class="flex flex-col items-center p-6 text-center">
+        <CardContent class="flex flex-col items-center px-6 text-center">
           <img
             v-if="profile.profile_photo"
             :src="profile.profile_photo"
@@ -210,7 +212,7 @@ onMounted(() => {
             <div class="flex items-center justify-between">
               <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">System Due</span>
               <span
-                v-if="Number(profile.customer_total_due || 0) > 0"
+                v-if="hasSystemDue"
                 class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700"
               >
                 Due Outstanding
@@ -224,7 +226,7 @@ onMounted(() => {
             </div>
             <p
               class="mt-1.5 text-2xl font-extrabold tracking-tight"
-              :class="Number(profile.customer_total_due || 0) > 0 ? 'text-red-600' : 'text-slate-900'"
+              :class="hasSystemDue ? 'text-red-600' : 'text-slate-900'"
             >
               {{ profile.currency_symbol || '৳' }}{{ formatCurrency(profile.customer_total_due || 0) }}
             </p>
@@ -245,7 +247,7 @@ onMounted(() => {
         <CardContent class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
           <div v-for="detail in details" :key="detail.label">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ detail.label }}</p>
-            <p class="mt-1 break-words text-sm font-medium text-slate-900">{{ displayValue(detail.value) }}</p>
+            <p :class="['mt-1 break-words text-sm font-medium', detail.isDue ? 'text-red-600' : 'text-slate-900']">{{ displayValue(detail.value) }}</p>
           </div>
         </CardContent>
       </Card>
