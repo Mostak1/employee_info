@@ -778,7 +778,7 @@ onMounted(() => {
 
     <!-- New Application Dialog -->
     <Dialog v-model:open="applyDialogOpen">
-      <DialogContent class="sm:max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border-slate-200 bg-white p-5 sm:p-7">
+      <DialogContent class="sm:max-w-4xl max-h-[92vh] overflow-y-auto no-scrollbar rounded-2xl border-slate-200 bg-white p-5 sm:p-7">
         <DialogHeader>
           <DialogTitle class="text-xl font-bold text-slate-900">New Application</DialogTitle>
           <DialogDescription class="text-xs text-slate-500">

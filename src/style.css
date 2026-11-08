@@ -194,3 +194,14 @@ code { padding: 5px 8px; border-radius: 7px; color: #475569; background: #f1f5f9
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
