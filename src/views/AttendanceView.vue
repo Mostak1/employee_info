@@ -118,24 +118,6 @@ const periodLabel = computed(() => {
   return start === end ? start : `${start} – ${end}`
 })
 
-const averageWorkingHoursValue = computed(() => {
-  const workingDays = attendance.value.filter((day) => {
-    const isWorkingDay = day.status === 'present' || day.status === 'late'
-    return isWorkingDay && Number.isFinite(Number(day.worked_hours))
-  })
-
-  if (workingDays.length === 0) return 0
-
-  const totalHours = workingDays.reduce((total, day) => total + Number(day.worked_hours), 0)
-  return totalHours / workingDays.length
-})
-
-const averageWorkingHours = computed(() => `${averageWorkingHoursValue.value.toFixed(2)} hrs`)
-
-const hasRequiredWorkingHours = computed(
-  () => Number.isFinite(requiredWorkingHours.value) && requiredWorkingHours.value > 0,
-)
-
 function hasSamePunchTimestamp(clockIn, clockOut) {
   if (!clockIn || !clockOut) return false
 
@@ -157,6 +139,41 @@ function isMissingClockOut(day) {
     && (!day.clock_out || hasSamePunchTimestamp(day.clock_in, day.clock_out))
 }
 
+function formatDuration(decimalHours) {
+  const value = Number(decimalHours)
+  if (!Number.isFinite(value) || value < 0) return '—'
+  const totalMinutes = Math.round(value * 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const mins = totalMinutes % 60
+
+  if (hours > 0 && mins > 0) {
+    return `${hours} hrs ${mins} mins`
+  }
+  if (hours > 0) {
+    return `${hours} hrs`
+  }
+  return `${mins} mins`
+}
+
+const averageWorkingHoursValue = computed(() => {
+  const workingDays = attendance.value.filter((day) => {
+    const isWorkingDay = day.status === 'present' || day.status === 'late'
+    // Exclude days currently in progress (missing clock-out) or without recorded valid hours
+    return isWorkingDay && !isMissingClockOut(day) && Number.isFinite(Number(day.worked_hours))
+  })
+
+  if (workingDays.length === 0) return 0
+
+  const totalHours = workingDays.reduce((total, day) => total + Number(day.worked_hours), 0)
+  return totalHours / workingDays.length
+})
+
+const averageWorkingHours = computed(() => formatDuration(averageWorkingHoursValue.value))
+
+const hasRequiredWorkingHours = computed(
+  () => Number.isFinite(requiredWorkingHours.value) && requiredWorkingHours.value > 0,
+)
+
 function formatClockOut(day) {
   return isMissingClockOut(day) ? 'Missing' : formatTime(day?.clock_out)
 }
@@ -167,7 +184,7 @@ function formatWorkedHours(day) {
     return punchData.value.today && day.date === punchData.value.today ? 'In progress' : 'Incomplete'
   }
   if (day.worked_hours == null || day.worked_hours === '') return '—'
-  return day.worked_hours
+  return formatDuration(day.worked_hours)
 }
 
 function formatLateMinutes(day) {
@@ -206,7 +223,7 @@ const summaryCards = computed(() => [
   {
     label: hasRequiredWorkingHours.value ? 'Required working hours' : 'Avg working hours',
     value: hasRequiredWorkingHours.value
-      ? `${requiredWorkingHours.value.toFixed(2)} hrs`
+      ? formatDuration(requiredWorkingHours.value)
       : averageWorkingHours.value,
     secondary: hasRequiredWorkingHours.value ? `Avg: ${averageWorkingHours.value}` : null,
     tone: 'bg-violet-600',
