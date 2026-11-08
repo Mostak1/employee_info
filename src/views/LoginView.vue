@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { Eye, EyeOff } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
@@ -77,7 +78,10 @@ function getPostLoginDestination() {
               </InputGroupAddon>
             </InputGroup>
           </label>
-          <Button type="submit" size="lg" :disabled="auth.loading" class="h-11 w-full">{{ auth.loading ? 'Signing in…' : 'Sign in' }}</Button>
+          <Button type="submit" size="lg" :disabled="auth.loading" class="h-11 w-full flex items-center justify-center gap-2">
+            <Spinner v-if="auth.loading" class="size-4" />
+            <span>{{ auth.loading ? 'Signing in…' : 'Sign in' }}</span>
+          </Button>
         </form>
       </CardContent>
     </Card>

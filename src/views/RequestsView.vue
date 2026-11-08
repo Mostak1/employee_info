@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -986,7 +987,7 @@ onMounted(() => {
                     (isHolidayExchange && (!selectedHolidayOption || selectedHolidayOption.already_applied))
                   "
                 >
-                  <LoaderCircle v-if="submitting" class="size-4 animate-spin" />
+                  <Spinner v-if="submitting" class="size-4" />
                   <Send v-else class="size-4" />
                   <span>{{ submitting ? 'Submitting…' : 'Submit Leave Application' }}</span>
                 </Button>
@@ -1042,7 +1043,7 @@ onMounted(() => {
                   class="w-full gap-2 rounded-xl bg-teal-700 font-bold text-white hover:bg-teal-800"
                   :disabled="submitting || otForm.hours <= 0"
                 >
-                  <LoaderCircle v-if="submitting" class="size-4 animate-spin" />
+                  <Spinner v-if="submitting" class="size-4" />
                   <Send v-else class="size-4" />
                   <span>{{ submitting ? 'Submitting…' : 'Submit Overtime Request' }}</span>
                 </Button>

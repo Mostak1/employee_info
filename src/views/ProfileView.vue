@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -288,7 +289,10 @@ onMounted(() => {
           <p v-if="submitError" class="rounded-md bg-red-50 p-3 text-sm text-red-700">{{ submitError }}</p>
           <DialogFooter>
             <Button type="button" variant="outline" :disabled="submitting" @click="requestOpen = false">Cancel</Button>
-            <Button type="submit" :disabled="submitting">{{ submitting ? 'Submitting…' : 'Submit request' }}</Button>
+            <Button type="submit" :disabled="submitting" class="flex items-center gap-2">
+              <Spinner v-if="submitting" class="size-4" />
+              <span>{{ submitting ? 'Submitting…' : 'Submit request' }}</span>
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
