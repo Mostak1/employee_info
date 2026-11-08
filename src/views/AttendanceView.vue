@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -588,7 +589,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section>
+  <section class="max-w-full overflow-x-clip">
     <div class="flex flex-wrap items-end justify-between gap-3">
       <div>
         <p class="text-sm font-semibold uppercase tracking-wider text-teal-700">History</p>
@@ -776,10 +777,10 @@ onBeforeUnmount(() => {
             </Button>
             <Button
               type="submit"
-              class="bg-teal-700 text-white hover:bg-teal-800"
+              class="bg-teal-700 text-white hover:bg-teal-800 flex items-center gap-1.5"
               :disabled="locationSubmitting || !locationCoords || !locationAddressName.trim()"
             >
-              <LoaderCircle v-if="locationSubmitting" class="mr-1.5 size-4 animate-spin" />
+              <Spinner v-if="locationSubmitting" class="size-4" />
               <span>{{ locationSubmitting ? 'Submitting…' : 'Submit Request' }}</span>
             </Button>
           </DialogFooter>
@@ -1014,12 +1015,14 @@ onBeforeUnmount(() => {
         </Card>
       </div>
 
-      <Tabs default-value="daily-records" class="mt-6">
-        <TabsList class="w-full">
-          <TabsTrigger value="daily-records">Daily records</TabsTrigger>
-          <TabsTrigger value="upcoming-holidays">Upcoming holidays</TabsTrigger>
-          <TabsTrigger value="team-roster">Team Roster</TabsTrigger>
-        </TabsList>
+      <Tabs default-value="daily-records" class="mt-6 w-full min-w-0">
+        <div class="w-full overflow-x-auto no-scrollbar">
+          <TabsList class="grid w-full min-w-[340px] grid-cols-3">
+            <TabsTrigger value="daily-records" class="px-2 text-xs sm:text-sm">Daily records</TabsTrigger>
+            <TabsTrigger value="upcoming-holidays" class="px-2 text-xs sm:text-sm">Holidays</TabsTrigger>
+            <TabsTrigger value="team-roster" class="px-2 text-xs sm:text-sm">Team Roster</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="daily-records" class="mt-3">
           <Card>
@@ -1030,8 +1033,8 @@ onBeforeUnmount(() => {
           </div>
           <div v-else>
             <div class="space-y-3 px-4 md:hidden">
-              <Card v-for="day in attendance" :key="day.date" class="shadow-none">
-                <CardContent class="px-4">
+              <Card v-for="day in attendance" :key="day.date" class="py-0 border-slate-200 bg-white shadow-xs">
+                <CardContent class="p-3.5">
                   <div class="flex items-center justify-between gap-3">
                     <p class="font-semibold text-slate-800">{{ formatDate(day.date) }}</p>
                     <span :class="['rounded-full px-2.5 py-1 text-xs font-semibold capitalize', statusClass(day.status)]">{{ statusLabel(day.status) }}</span>

@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Archive, CalendarDays, Check, CheckCircle, ChevronsUpDown, Eye, Filter, LoaderCircle, MoreHorizontal, Pencil, Plus, RefreshCw } from '@lucide/vue'
+import { Archive, Calendar, CalendarDays, Check, CheckCircle, ChevronsUpDown, Clock, Eye, Filter, LoaderCircle, MoreHorizontal, Pencil, Plus, RefreshCw, User } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -348,37 +349,65 @@ onMounted(() => loadTodos())
 
       <div v-else class="mt-6 space-y-3">
         <div class="grid gap-3 md:hidden">
-          <Card v-for="todo in todos" :key="todo.id" class="shadow-sm">
-            <CardContent class="px-6">
-              <div class="flex min-w-0 items-start justify-between gap-3">
-                <button class="min-w-0 flex-1 overflow-hidden text-left" @click="openDetails(todo)">
-                  <p class="text-xs font-medium text-slate-500">{{ todo.task_id }}</p>
-                  <p class="mt-1 max-w-full overflow-hidden break-words text-base font-semibold leading-snug text-slate-900 line-clamp-2">{{ todo.task }}</p>
-                  <p v-if="descriptionExcerpt(todo.description)" class="mt-1 max-w-full overflow-hidden text-xs leading-5 text-slate-500 line-clamp-2">{{ descriptionExcerpt(todo.description) }}</p>
-                </button>
-                <Badge class="shrink-0" :class="badgeClass('status', todo.status)">{{ todo.status_label }}</Badge>
+          <Card v-for="todo in todos" :key="todo.id" class="overflow-hidden border-slate-200 bg-white py-0 shadow-xs transition hover:border-teal-200 hover:shadow-sm">
+            <CardContent class="p-4 sm:p-5">
+              <!-- Top Row: Task ID & Status -->
+              <div class="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <span class="font-mono text-xs font-semibold text-slate-500">{{ todo.task_id }}</span>
+                <Badge class="shrink-0 text-[11px] font-semibold" :class="badgeClass('status', todo.status)">
+                  {{ todo.status_label }}
+                </Badge>
               </div>
-              <div class="mt-3 flex flex-wrap items-center gap-2">
-                <Badge v-if="todo.priority" :class="badgeClass('priority', todo.priority)">{{ todo.priority_label }}</Badge>
+
+              <!-- Main Clickable Task Content -->
+              <button class="mt-2.5 block w-full text-left" @click="openDetails(todo)">
+                <p class="text-sm font-semibold leading-snug text-slate-900 line-clamp-2">{{ todo.task }}</p>
+                <p v-if="descriptionExcerpt(todo.description)" class="mt-1 text-xs text-slate-500 line-clamp-2">
+                  {{ descriptionExcerpt(todo.description) }}
+                </p>
+              </button>
+
+              <!-- Priority & Info Tags -->
+              <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                <Badge v-if="todo.priority" class="text-[10px] font-medium" :class="badgeClass('priority', todo.priority)">
+                  {{ todo.priority_label }}
+                </Badge>
+                <span v-if="todo.estimated_hours" class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
+                  <Clock class="size-3 text-slate-400" />
+                  {{ todo.estimated_hours }} hrs
+                </span>
               </div>
-              <div class="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
-                <div><p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Start date</p><p class="mt-1">{{ formatDate(todo.start_date) }}</p></div>
-                <div><p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">End date</p><p class="mt-1">{{ formatDate(todo.end_date) }}</p></div>
-              </div>
-              <div class="mt-4 flex items-center justify-between gap-2 text-xs text-slate-500">
-                <span class="truncate">Assigned to: {{ todo.assigned_to?.map((person) => person.name).join(', ') || 'Not provided' }}</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" size="icon-xs" aria-label="Open task actions"><MoreHorizontal class="size-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" class="w-44">
-                    <DropdownMenuItem @select="openDetails(todo)"><Eye class="size-4" /> View</DropdownMenuItem>
-                    <!-- <DropdownMenuSeparator v-if="todo.can_edit || todo.can_change_status || todo.can_archive" /> -->
-                    <DropdownMenuItem v-if="todo.can_edit" @select="openEdit(todo)"><Pencil class="size-4" /> Edit</DropdownMenuItem>
-                    <DropdownMenuItem v-if="todo.can_change_status" @select="openChangeStatus(todo)"><CheckCircle class="size-4" /> Change status</DropdownMenuItem>
-                    <DropdownMenuItem v-if="todo.can_archive" class="text-red-600 focus:bg-red-50 focus:text-red-700" @select="openArchive(todo)"><Archive class="size-4" /> Archive</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
+              <!-- Dates & Assigned Footer -->
+              <div class="mt-3.5 space-y-2 border-t border-slate-100 pt-3 text-xs text-slate-600">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-1.5 text-slate-500">
+                    <Calendar class="size-3.5 shrink-0 text-slate-400" />
+                    <span>{{ formatDate(todo.start_date) }}</span>
+                    <span v-if="todo.end_date">&rarr; {{ formatDate(todo.end_date) }}</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex min-w-0 items-center gap-1.5 text-slate-500">
+                    <User class="size-3.5 shrink-0 text-slate-400" />
+                    <span class="truncate">{{ todo.assigned_to?.map((person) => person.name).join(', ') || 'Unassigned' }}</span>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="ghost" size="icon-xs" aria-label="Open task actions" class="h-7 w-7 text-slate-400 hover:text-slate-800">
+                        <MoreHorizontal class="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="w-44">
+                      <DropdownMenuItem @select="openDetails(todo)"><Eye class="size-4" /> View</DropdownMenuItem>
+                      <DropdownMenuItem v-if="todo.can_edit" @select="openEdit(todo)"><Pencil class="size-4" /> Edit</DropdownMenuItem>
+                      <DropdownMenuItem v-if="todo.can_change_status" @select="openChangeStatus(todo)"><CheckCircle class="size-4" /> Change status</DropdownMenuItem>
+                      <DropdownMenuItem v-if="todo.can_archive" class="text-red-600 focus:bg-red-50 focus:text-red-700" @select="openArchive(todo)"><Archive class="size-4" /> Archive</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -569,7 +598,7 @@ onMounted(() => loadTodos())
 
           <label class="grid gap-2 text-sm font-medium">Description <RichTextEditor v-model="form.description" :disabled="saving" /></label>
           <p v-if="formError" class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{{ formError }}</p>
-          <DialogFooter><Button type="button" variant="outline" :disabled="saving" @click="formOpen = false">Cancel</Button><Button type="submit" :disabled="saving"><LoaderCircle v-if="saving" class="size-4 animate-spin" aria-hidden="true" /> {{ saving ? 'Saving…' : 'Save' }}</Button></DialogFooter>
+          <DialogFooter><Button type="button" variant="outline" :disabled="saving" @click="formOpen = false">Cancel</Button><Button type="submit" :disabled="saving" class="flex items-center gap-1.5"><Spinner v-if="saving" class="size-4" /> {{ saving ? 'Saving…' : 'Save' }}</Button></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

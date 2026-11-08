@@ -94,7 +94,7 @@ async function signOut() {
       </div>
     </header>
 
-    <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8"><RouterView /></main>
+    <main class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 overflow-x-clip"><RouterView /></main>
 
     <!-- Bottom Footer Navigation Dock (Visible on Mobile & Desktop) -->
     <nav class="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">

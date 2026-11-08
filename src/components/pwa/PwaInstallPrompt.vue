@@ -146,7 +146,7 @@
             </div>
             <div>
               <p class="font-medium text-slate-900">Or use Browser Menu (⋮)</p>
-              <p class="text-xs text-slate-500">Open menu $\rightarrow$ <span class="font-medium text-slate-800">"Save and share"</span> $\rightarrow$ <span class="font-semibold text-teal-700">"Install AWC Employee App"</span>.</p>
+              <p class="text-xs text-slate-500">Open menu &rarr; <span class="font-medium text-slate-800">"Save and share"</span> &rarr; <span class="font-semibold text-teal-700">"Install AWC Employee App"</span>.</p>
             </div>
           </div>
         </div>
