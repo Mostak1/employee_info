@@ -73,6 +73,10 @@ const locationCoords = ref(null)
 const locationCapturing = ref(false)
 const locationPermissionBlocked = ref(false)
 const locationSubmitting = ref(false)
+const geocodingLoading = ref(false)
+const detectedAreaName = ref('')
+const punchLocationArea = ref('')
+const punchLocationLoading = ref(false)
 
 const loading = ref(true)
 const error = ref('')
@@ -391,11 +395,54 @@ async function loadTeamRoster() {
   }
 }
 
+async function resolveLocationAddress(coordString) {
+  if (!coordString || typeof coordString !== 'string') return ''
+  const parts = coordString.split(',').map((p) => p.trim())
+  if (parts.length < 2) return coordString
+  const lat = parseFloat(parts[0])
+  const lon = parseFloat(parts[1])
+  if (Number.isNaN(lat) || Number.isNaN(lon)) return coordString
+
+  punchLocationLoading.value = true
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&addressdetails=1`,
+      {
+        headers: {
+          'Accept-Language': 'en',
+        },
+      }
+    )
+    if (!res.ok) return coordString
+    const data = await res.json()
+    const addr = data.address || {}
+    const area = addr.neighbourhood || addr.suburb || addr.quarter || addr.residential || addr.road || addr.village || ''
+    const city = addr.city || addr.town || addr.municipality || addr.state_district || addr.state || ''
+    let combined = ''
+    if (area && city) {
+      combined = `${area}, ${city}`
+    } else {
+      combined = area || city || data.display_name?.split(',').slice(0, 3).join(', ') || ''
+    }
+    punchLocationArea.value = combined || coordString
+    return punchLocationArea.value
+  } catch (err) {
+    console.error('Failed to resolve punch location:', err)
+    punchLocationArea.value = coordString
+    return coordString
+  } finally {
+    punchLocationLoading.value = false
+  }
+}
+
 async function loadPunchStatus() {
   punchLoading.value = true
   try {
     const { data } = await runtimeRequest('get', 'attendanceStatus')
     punchData.value = data
+    if (data?.attendance?.clock_in_location) {
+      resolveLocationAddress(data.attendance.clock_in_location)
+    }
   } catch {
     punchData.value.allow_remote = false
   } finally {
@@ -403,9 +450,50 @@ async function loadPunchStatus() {
   }
 }
 
+async function reverseGeocode(lat, lon) {
+  geocodingLoading.value = true
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&addressdetails=1`,
+      {
+        headers: {
+          'Accept-Language': 'en',
+        },
+      }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const addr = data.address || {}
+    
+    // Pick the most relevant parts: neighbourhood/suburb/quarter/road + city/town/state
+    const area = addr.neighbourhood || addr.suburb || addr.quarter || addr.residential || addr.road || addr.village || ''
+    const city = addr.city || addr.town || addr.municipality || addr.state_district || addr.state || ''
+    
+    let combined = ''
+    if (area && city) {
+      combined = `${area}, ${city}`
+    } else {
+      combined = area || city || data.display_name?.split(',').slice(0, 3).join(', ') || ''
+    }
+
+    detectedAreaName.value = combined
+    // Auto-fill address name if it's currently empty
+    if (!locationAddressName.value.trim() && combined) {
+      locationAddressName.value = combined
+    }
+    return combined
+  } catch (err) {
+    console.error('Reverse geocoding error:', err)
+    return null
+  } finally {
+    geocodingLoading.value = false
+  }
+}
+
 async function captureCurrentLocation() {
   locationCapturing.value = true
   locationPermissionBlocked.value = false
+  detectedAreaName.value = ''
   try {
     const loc = await getCurrentLocation()
     if (loc.success && loc.latitude && loc.longitude) {
@@ -415,6 +503,8 @@ async function captureCurrentLocation() {
         accuracy: loc.accuracy || null,
       }
       locationPermissionBlocked.value = false
+      // Perform reverse geocoding using OpenStreetMap Nominatim
+      reverseGeocode(loc.latitude, loc.longitude)
     } else {
       if (loc.isPermissionDenied) {
         locationPermissionBlocked.value = true
@@ -440,6 +530,7 @@ function openLocationModal() {
   locationAddressName.value = punchData.value.remote_location?.default_location?.address || ''
   locationReason.value = ''
   locationCoords.value = null
+  detectedAreaName.value = ''
   locationPermissionBlocked.value = false
   locationModalOpen.value = true
   captureCurrentLocation()
@@ -529,7 +620,7 @@ async function handlePunch(action) {
     } else {
       const { data } = await runtimeRequest('post', 'clockOut', { data: payload })
       toast.success('Clock Out Successful', {
-        description: `Clocked out at ${formatTime(data.attendance?.clock_out_time)}. Total worked: ${data.attendance?.worked_hours ?? 0} hrs.`,
+        description: `Clocked out at ${formatTime(data.attendance?.clock_out_time)}. Total worked: ${formatDuration(data.attendance?.worked_hours)}.`,
       })
     }
 
@@ -597,7 +688,7 @@ onBeforeUnmount(() => {
         <p class="mt-1 text-sm text-slate-500">{{ periodLabel }}</p>
       </div>
       <div class="flex items-center gap-2">
-        <Button
+        <!-- <Button
           as-child
           size="sm"
           class="gap-1.5 rounded-xl bg-teal-700 font-semibold text-white shadow-xs hover:bg-teal-800"
@@ -606,7 +697,7 @@ onBeforeUnmount(() => {
             <Send class="size-3.5" />
             <span>Apply Leave</span>
           </RouterLink>
-        </Button>
+        </Button> -->
         <Button
           type="button"
           variant="outline"
@@ -693,34 +784,49 @@ onBeforeUnmount(() => {
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
                 <Navigation class="size-4 text-teal-600" />
-                <span>GPS Coordinates</span>
+                <span>Detected Location</span>
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 class="h-7 gap-1 text-xs text-teal-700 hover:bg-teal-100/60"
-                :disabled="locationCapturing || geoLoading"
+                :disabled="locationCapturing || geoLoading || geocodingLoading"
                 @click="captureCurrentLocation"
               >
-                <LoaderCircle v-if="locationCapturing || geoLoading" class="size-3.5 animate-spin" />
+                <LoaderCircle v-if="locationCapturing || geoLoading || geocodingLoading" class="size-3.5 animate-spin" />
                 <RefreshCw v-else class="size-3.5" />
-                <span>{{ locationCapturing || geoLoading ? 'Locating…' : 'Re-detect' }}</span>
+                <span>{{ locationCapturing || geoLoading ? 'Locating…' : geocodingLoading ? 'Resolving…' : 'Re-detect' }}</span>
               </Button>
             </div>
 
-            <div v-if="locationCoords" class="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-              <div class="rounded-lg bg-white p-2 border border-slate-200">
-                <p class="text-[10px] text-slate-400 font-mono">LATITUDE</p>
-                <p class="font-mono font-bold text-slate-800">{{ locationCoords.latitude?.toFixed(6) }}</p>
+            <div v-if="locationCoords" class="mt-2.5 space-y-2 text-xs">
+              <!-- Human readable area name from OpenStreetMap -->
+              <div class="rounded-lg bg-white p-2.5 border border-teal-200/80 bg-teal-50/20">
+                <div class="flex items-start gap-2">
+                  <MapPin class="size-4 text-teal-600 shrink-0 mt-0.5" />
+                  <div class="min-w-0 flex-1">
+                    <p class="text-[10px] uppercase font-bold text-teal-700 tracking-wider">Detected Area</p>
+                    <div v-if="geocodingLoading" class="flex items-center gap-1.5 mt-0.5 text-slate-500 text-xs">
+                      <LoaderCircle class="size-3 animate-spin" /> Finding area name…
+                    </div>
+                    <p v-else-if="detectedAreaName" class="font-semibold text-slate-800 text-sm leading-snug">
+                      {{ detectedAreaName }}
+                    </p>
+                    <p v-else class="text-slate-500 italic text-xs">
+                      Area name unavailable (coordinates locked)
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div class="rounded-lg bg-white p-2 border border-slate-200">
-                <p class="text-[10px] text-slate-400 font-mono">LONGITUDE</p>
-                <p class="font-mono font-bold text-slate-800">{{ locationCoords.longitude?.toFixed(6) }}</p>
+
+              <!-- GPS Coordinates (compact / secondary view) -->
+              <div class="flex items-center justify-between text-[11px] text-slate-500 px-1 font-mono">
+                <!-- <span>GPS: {{ locationCoords.latitude?.toFixed(5) }}, {{ locationCoords.longitude?.toFixed(5) }}</span> -->
+                <!-- <span class="text-emerald-600 flex items-center gap-1 font-sans font-medium text-[10px]">
+                  <CheckCircle2 class="size-3" /> Locked
+                </span> -->
               </div>
-              <p class="col-span-2 text-[11px] text-emerald-600 flex items-center gap-1 font-medium">
-                <CheckCircle2 class="size-3.5" /> High accuracy GPS coordinates locked
-              </p>
             </div>
             <div v-else class="mt-2.5 text-xs text-amber-700 bg-amber-50 rounded-lg p-2.5 flex items-center gap-2 border border-amber-200">
               <LoaderCircle v-if="locationCapturing || geoLoading" class="size-4 animate-spin shrink-0" />
@@ -885,7 +991,7 @@ onBeforeUnmount(() => {
                   <span class="mx-1.5">·</span>
                   <span>Out: {{ formatTime(punchData.attendance?.clock_out_time) }}</span>
                   <span class="mx-1.5">·</span>
-                  <strong class="font-bold text-teal-700">{{ punchData.attendance?.worked_hours }} hrs</strong>
+                  <strong class="font-bold text-teal-700">{{ formatDuration(punchData.attendance?.worked_hours) }}</strong>
                 </div>
               </div>
             </template>
@@ -928,11 +1034,25 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <!-- Location recorded during punch -->
+        <!-- Location recorded during punch (commented original GPS and showing reverse geocoded area name) -->
+        <!--
         <div v-if="punchData.has_clocked_in && punchData.attendance?.clock_in_location" class="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
           <MapPin class="size-3.5 text-teal-600 shrink-0" />
           <span>
             Today's Punch GPS: <span class="font-medium text-slate-700">{{ punchData.attendance.clock_in_location }}</span>
+          </span>
+        </div>
+        -->
+        <div v-if="punchData.has_clocked_in && punchData.attendance?.clock_in_location" class="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+          <MapPin class="size-3.5 text-teal-600 shrink-0" />
+          <span>
+            Today's Punch Location:
+            <span v-if="punchLocationLoading" class="inline-flex items-center gap-1 font-medium text-slate-600">
+              <LoaderCircle class="size-3 animate-spin text-teal-600 inline" /> Detecting area…
+            </span>
+            <span v-else class="font-medium text-slate-700">
+              {{ punchLocationArea || punchData.attendance.clock_in_location }}
+            </span>
           </span>
         </div>
       </CardContent>
