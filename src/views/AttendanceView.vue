@@ -395,25 +395,60 @@ async function loadTeamRoster() {
   }
 }
 
+function isIpLocation(val) {
+  if (!val || typeof val !== 'string') return false
+  const trimmed = val.trim()
+  return (
+    trimmed.startsWith('IP:') ||
+    trimmed.startsWith('IP :') ||
+    /^(\d{1,3}\.){3}\d{1,3}$/.test(trimmed)
+  )
+}
+
+function extractCoordinates(str) {
+  if (!str || typeof str !== 'string') return null
+  // Match latitude, longitude pattern (e.g. "23.7745, 90.3954" or "Office | 23.7745, 90.3954")
+  const match = str.match(/(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/)
+  if (match) {
+    const lat = parseFloat(match[1])
+    const lon = parseFloat(match[2])
+    if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+      return { lat, lon }
+    }
+  }
+  return null
+}
+
 async function resolveLocationAddress(coordString) {
   if (!coordString || typeof coordString !== 'string') return ''
-  const parts = coordString.split(',').map((p) => p.trim())
-  if (parts.length < 2) return coordString
-  const lat = parseFloat(parts[0])
-  const lon = parseFloat(parts[1])
-  if (Number.isNaN(lat) || Number.isNaN(lon)) return coordString
+  if (isIpLocation(coordString)) return ''
+
+  // If a location name was already provided before pipe (e.g. "Mohakhali DOHS | 23.77, 90.39")
+  if (coordString.includes('|')) {
+    const prefix = coordString.split('|')[0].trim()
+    if (prefix && !isIpLocation(prefix)) {
+      punchLocationArea.value = prefix
+    }
+  }
+
+  const coords = extractCoordinates(coordString)
+  if (!coords) {
+    // If not coordinates and not an IP, keep whatever friendly text is present
+    punchLocationArea.value = isIpLocation(coordString) ? '' : coordString
+    return punchLocationArea.value
+  }
 
   punchLocationLoading.value = true
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&format=json&addressdetails=1`,
+      `https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(coords.lat)}&lon=${encodeURIComponent(coords.lon)}&format=json&addressdetails=1`,
       {
         headers: {
           'Accept-Language': 'en',
         },
       }
     )
-    if (!res.ok) return coordString
+    if (!res.ok) return punchLocationArea.value || coordString
     const data = await res.json()
     const addr = data.address || {}
     const area = addr.neighbourhood || addr.suburb || addr.quarter || addr.residential || addr.road || addr.village || ''
@@ -424,12 +459,11 @@ async function resolveLocationAddress(coordString) {
     } else {
       combined = area || city || data.display_name?.split(',').slice(0, 3).join(', ') || ''
     }
-    punchLocationArea.value = combined || coordString
+    punchLocationArea.value = combined || punchLocationArea.value || ''
     return punchLocationArea.value
   } catch (err) {
     console.error('Failed to resolve punch location:', err)
-    punchLocationArea.value = coordString
-    return coordString
+    return punchLocationArea.value || ''
   } finally {
     punchLocationLoading.value = false
   }
@@ -1043,7 +1077,13 @@ onBeforeUnmount(() => {
           </span>
         </div>
         -->
-        <div v-if="punchData.has_clocked_in && punchData.attendance?.clock_in_location" class="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500">
+        <div
+          v-if="
+            punchData.has_clocked_in &&
+            (punchLocationArea || (punchData.attendance?.clock_in_location && !isIpLocation(punchData.attendance.clock_in_location)))
+          "
+          class="mt-2 flex items-center gap-1.5 text-[11px] text-slate-500"
+        >
           <MapPin class="size-3.5 text-teal-600 shrink-0" />
           <span>
             Today's Punch Location:
